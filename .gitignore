@@ -1,0 +1,41 @@
+# PlatformIO build artifacts & dependencies
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Compiled binaries & object files
+*.bin
+*.elf
+*.hex
+*.o
+*.a
+*.d
+
+# Clangd & language server index caches
+.cache/
+compile_commands.json
+.clangd
+
+# Visual Studio Code (contains machine-specific toolchain paths)
+.vscode/
+!.vscode/extensions.json
+
+# JetBrains / CLion
+.idea/
+cmake-build-*/
+
+# Python caches (scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Environment variables & local secrets
+.env
+*.local
