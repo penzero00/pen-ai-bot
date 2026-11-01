@@ -625,6 +625,20 @@ void TaskCore0Network(void *pvParameters) {
       });
 
   // --- REST API Endpoints for Device Pairing & Network Setup ---
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  server.on("/api/wifi/scan", HTTP_OPTIONS, [](AsyncWebServerRequest *request) {
+    request->send(200);
+  });
+  server.on("/api/wifi/connect", HTTP_OPTIONS, [](AsyncWebServerRequest *request) {
+    request->send(200);
+  });
+  server.on("/api/bot/rename", HTTP_OPTIONS, [](AsyncWebServerRequest *request) {
+    request->send(200);
+  });
+
   server.on("/api/wifi/status", HTTP_GET, [](AsyncWebServerRequest *request) {
     JsonDocument doc;
     bool connected = (WiFi.status() == WL_CONNECTED);

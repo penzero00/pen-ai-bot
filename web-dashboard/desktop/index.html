@@ -63,38 +63,25 @@
   <header class="sticky top-0 z-40 glass border-b border-white/10 px-4 py-2.5">
     <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
       
-      <!-- Bot Identity & Rename Quick Action -->
+      <!-- Bot Identity -->
       <div class="flex items-center gap-3">
-        <div id="liveStatusPulse" class="h-2.5 w-2.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_10px_#fbbf24]"></div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span id="headerBotName" class="font-bold tracking-tight text-white text-base">PenBot</span>
-            <button id="openRenameModalBtn" class="text-[10px] mono uppercase px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-white/10 transition">
-              Rename Bot
-            </button>
-            <span class="text-[10px] mono uppercase px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-              ESP32-S3 N16R8
-            </span>
-          </div>
-          <p class="text-[11px] text-zinc-400 mono">Autonomous Desktop Companion &bull; Core0 Network &bull; Core1 60FPS Eyes</p>
-        </div>
+        <!-- PenBot Square Logo with > 0 eyes -->
+        <svg class="w-7 h-7 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <rect x="2" y="2" width="20" height="20" rx="5" stroke-width="2" stroke="currentColor" fill="rgba(6, 182, 212, 0.12)"/>
+          <!-- Left Eye: > -->
+          <path d="M6.5 8.5L10.5 12L6.5 15.5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <!-- Right Eye: 0 -->
+          <rect x="13.5" y="8.5" width="5" height="7" rx="2.5" stroke-width="2"/>
+        </svg>
+        <span id="headerBotName" class="font-bold tracking-tight text-white text-base">PenBot</span>
       </div>
 
-      <!-- Connection Controller & Action Center -->
-      <div class="flex flex-wrap items-center gap-2 text-xs mono">
-        <!-- Target Host Input -->
-        <div class="flex items-center bg-zinc-900 border border-white/10 rounded-lg overflow-hidden p-0.5">
-          <input id="robotHostInput" type="text" placeholder="penbot.local / 192.168.4.1" value="penbot.local"
-                 class="bg-transparent px-2.5 py-1 text-xs mono text-zinc-200 outline-none w-36 sm:w-44 placeholder:text-zinc-600" />
-          <button id="connectWsBtn" class="px-3 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-semibold transition active:scale-95">
-            Connect
-          </button>
-        </div>
-
+      <!-- Actions: Status & Firmware Update -->
+      <div class="flex items-center gap-3 text-xs mono">
         <!-- Connection State Badge -->
-        <div id="wsStatusBadge" class="px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 font-semibold">
-          <span id="wsStatusDot" class="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span>
-          <span id="wsModeText">ROBOT OS LIVE LINK</span>
+        <div id="wsStatusBadge" class="px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 font-semibold text-xs">
+          <span id="wsStatusDot" class="h-2 w-2 rounded-full bg-rose-400"></span>
+          <span id="wsModeText">DISCONNECTED</span>
         </div>
 
         <!-- Firmware OTA Flash Button -->
@@ -130,69 +117,51 @@
         <!-- Procedural Emotion Switcher -->
         <div class="w-full mt-4">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs mono text-zinc-400">PROCEDURAL EYE CONTROLLER (ST7789)</span>
-            <button id="toggleScreenQrBtn" class="text-[11px] mono text-cyan-400 hover:text-cyan-300 underline">
-              Toggle Setup QR
-            </button>
+            <span class="text-xs mono text-zinc-400 font-semibold">PROCEDURAL EYES</span>
           </div>
           <div class="grid grid-cols-4 sm:grid-cols-7 gap-1.5" id="emotionGrid">
-            <button data-emotion="0" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold">IDLE</button>
-            <button data-emotion="1" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900/80 text-zinc-400 border border-white/10 hover:text-white">HAPPY</button>
-            <button data-emotion="2" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900/80 text-zinc-400 border border-white/10 hover:text-white">ANGRY</button>
-            <button data-emotion="3" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900/80 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20">THINK</button>
-            <button data-emotion="4" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900/80 text-zinc-400 border border-white/10 hover:text-white">SLEEP</button>
-            <button data-emotion="5" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900/80 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20">SCARED</button>
-            <button data-emotion="6" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900/80 text-fuchsia-300 border border-fuchsia-500/20 hover:bg-fuchsia-500/20">DIZZY</button>
+            <button data-emotion="0" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-cyan-500/25 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(6,182,212,0.35)] font-bold transition">IDLE</button>
+            <button data-emotion="1" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900 text-emerald-400 border border-emerald-500/20 font-bold hover:text-emerald-300 transition">HAPPY</button>
+            <button data-emotion="2" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900 text-rose-400 border border-rose-500/20 font-bold hover:text-rose-300 transition">ANGRY</button>
+            <button data-emotion="3" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900 text-amber-300 border border-amber-500/20 font-bold hover:text-amber-200 transition">THINK</button>
+            <button data-emotion="4" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900 text-slate-400 border border-slate-500/20 font-bold hover:text-slate-300 transition">SLEEP</button>
+            <button data-emotion="5" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900 text-cyan-400 border border-cyan-500/20 font-bold hover:text-cyan-300 transition">SCARED</button>
+            <button data-emotion="6" class="emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900 text-fuchsia-300 border border-fuchsia-500/20 font-bold hover:text-fuchsia-200 transition">DIZZY</button>
           </div>
         </div>
       </div>
 
-      <!-- Real-Time Hardware Sensor Telemetry -->
+      <!-- Sensor Controller -->
       <div class="glass rounded-2xl p-4 flex flex-col gap-3">
         <div class="flex items-center justify-between">
-          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Real-Time Sensor Telemetry</span>
-          <span class="text-[10px] mono text-emerald-400">Core 1 Hardware Loop @ 60Hz</span>
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Sensor Controller</span>
         </div>
 
         <!-- SENSORS: HEAD LASER & BODY ULTRASONIC GAUGES -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <!-- Head VL53L0X Laser ToF (Above Screen) -->
-          <div class="p-3 rounded-xl bg-zinc-900/70 border border-white/5 space-y-1.5">
+          <div class="p-3 rounded-xl bg-zinc-900/70 border border-white/5 space-y-2">
             <div class="flex justify-between items-center text-xs mono">
               <span class="text-zinc-200 font-medium">Head Laser (ToF)</span>
               <span id="tofValueText" class="text-cyan-400 font-bold text-sm">420 mm</span>
             </div>
-            <!-- Range bar meter -->
-            <div class="w-full bg-zinc-800 h-2 rounded-full overflow-hidden p-0.5 border border-white/5 relative">
-              <div id="tofMeterBar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-cyan-400 rounded-full transition-all duration-150" style="width: 35%;"></div>
-            </div>
-            <input id="tofSimSlider" type="range" min="30" max="1200" value="420" class="w-full h-1 bg-zinc-800 rounded-lg cursor-pointer" title="Adjust distance" />
+            <input id="tofSimSlider" type="range" min="30" max="1200" value="420" class="w-full h-2 bg-zinc-800 rounded-lg cursor-pointer" title="Adjust distance" />
             <div class="flex justify-between items-center text-[10px] mono text-zinc-400 pt-0.5">
               <button id="tofResetBtn" class="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-cyan-300 font-semibold border border-white/10 active:scale-95 transition">Reset (420 mm)</button>
-              <div class="flex items-center gap-1.5">
-                <span id="tofStatusPill" class="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-300 font-semibold">CLEAR</span>
-                <span class="text-zinc-500">Threshold: 120mm</span>
-              </div>
+              <span class="text-zinc-500">Threshold: 120 mm</span>
             </div>
           </div>
 
           <!-- Body HC-SR04 Ultrasonic (Front Chassis) -->
-          <div class="p-3 rounded-xl bg-zinc-900/70 border border-white/5 space-y-1.5">
+          <div class="p-3 rounded-xl bg-zinc-900/70 border border-white/5 space-y-2">
             <div class="flex justify-between items-center text-xs mono">
               <span class="text-zinc-200 font-medium">Body Ultrasonic</span>
               <span id="usonicValueText" class="text-cyan-400 font-bold text-sm">380 mm</span>
             </div>
-            <!-- Range bar meter -->
-            <div class="w-full bg-zinc-800 h-2 rounded-full overflow-hidden p-0.5 border border-white/5 relative">
-              <div id="usonicMeterBar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-cyan-400 rounded-full transition-all duration-150" style="width: 19%;"></div>
-            </div>
-            <input id="usonicSimSlider" type="range" min="20" max="2000" value="380" class="w-full h-1 bg-zinc-800 rounded-lg cursor-pointer" title="Adjust distance" />
+            <input id="usonicSimSlider" type="range" min="20" max="2000" value="380" class="w-full h-2 bg-zinc-800 rounded-lg cursor-pointer" title="Adjust distance" />
             <div class="flex justify-between items-center text-[10px] mono text-zinc-400 pt-0.5">
               <button id="usonicResetBtn" class="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-cyan-300 font-semibold border border-white/10 active:scale-95 transition">Reset (380 mm)</button>
-              <div class="flex items-center gap-1.5">
-                <span id="usonicStatusPill" class="px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-300 font-semibold">CLEAR</span>
-                <span class="text-zinc-500">Threshold: 120mm</span>
-              </div>
+              <span class="text-zinc-500">Threshold: 120 mm</span>
             </div>
           </div>
         </div>
@@ -216,6 +185,15 @@
           </button>
         </div>
       </div>
+
+      <!-- Real-Time Event Stream -->
+      <div class="glass rounded-2xl p-3">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] mono uppercase font-bold text-zinc-300">Event Logs</span>
+          <button id="clearLogBtn" class="text-[10px] mono text-zinc-500 hover:text-zinc-300">Clear</button>
+        </div>
+        <div id="eventLog" class="h-32 overflow-y-auto bg-black/80 rounded-lg p-2 text-[11px] mono text-zinc-300 space-y-1 border border-white/5"></div>
+      </div>
     </section>
 
     <!-- RIGHT COLUMN: Multi-Tab OS Studio (7 cols) -->
@@ -223,10 +201,10 @@
 
       <!-- Navigation Tabs -->
       <div class="glass rounded-xl p-1 flex gap-1 overflow-x-auto">
-        <button data-tab="pair" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs mono font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">0. PAIR &amp; WI-FI</button>
-        <button data-tab="control" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs mono font-semibold text-zinc-400 hover:text-white whitespace-nowrap">1. RC &amp; PANNING</button>
-        <button data-tab="ai" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs mono font-semibold text-zinc-400 hover:text-white whitespace-nowrap">2. AI VOICE &amp; LLM</button>
-        <button data-tab="specs" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs mono font-semibold text-zinc-400 hover:text-white whitespace-nowrap">3. SYSTEM &amp; SPECS</button>
+        <button data-tab="pair" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs mono font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">PAIR &amp; WI-FI</button>
+        <button data-tab="control" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs mono font-semibold text-zinc-400 hover:text-white whitespace-nowrap">RC &amp; PANNING</button>
+        <button data-tab="ai" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs mono font-semibold text-zinc-400 hover:text-white whitespace-nowrap">AI SETTINGS</button>
+        <button data-tab="specs" class="tab-btn flex-1 py-2 px-2 rounded-lg text-xs mono font-semibold text-zinc-400 hover:text-white whitespace-nowrap">SYSTEM &amp; SPECS</button>
       </div>
 
       <!-- ===================================================================== -->
@@ -249,17 +227,13 @@
               <span>mDNS: <a href="http://penbot.local" target="_blank" class="text-emerald-400 hover:underline">http://penbot.local</a></span>
             </div>
           </div>
-          <button id="screenPairingQrTrigger" class="px-3 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-xs mono text-cyan-300 transition active:scale-95">
-            Show Setup QR on Screen
-          </button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Card 1: Interactive Phone Quick-Pair QR Code -->
           <div class="glass rounded-2xl p-4 flex flex-col items-center justify-between gap-3">
             <div class="w-full flex items-center justify-between">
-              <span class="text-xs mono uppercase text-zinc-400">Mobile Quick-Pair QR</span>
-              <span class="text-[10px] mono text-emerald-400">Offline Generator</span>
+              <span class="text-xs mono uppercase text-zinc-300 font-semibold">Connect via QR</span>
             </div>
 
             <!-- Segmented Selector -->
@@ -355,8 +329,8 @@
         <!-- Virtual Touch Joystick -->
         <div class="glass rounded-2xl p-4 flex flex-col items-center justify-between">
           <div class="w-full flex justify-between items-center mb-2">
-            <span class="text-xs mono uppercase text-zinc-400">Differential Drive</span>
-            <span id="joyTelemetry" class="text-xs mono text-cyan-400">X: 0 | Y: 0</span>
+            <span class="text-xs mono uppercase text-zinc-300 font-semibold">Wheel Controller</span>
+            <span id="joyTelemetry" class="text-xs mono text-cyan-400 font-bold">X: 0 | Y: 0</span>
           </div>
 
           <!-- Joystick Pad -->
@@ -405,7 +379,7 @@
       </div>
 
       <!-- ===================================================================== -->
-      <!-- TAB 2: AI VOICE & LLM -->
+      <!-- TAB 2: AI SETTINGS -->
       <!-- ===================================================================== -->
       <div id="tab-ai" class="tab-panel hidden flex flex-col gap-4">
         
@@ -472,7 +446,6 @@
         <div class="glass rounded-2xl p-4 flex flex-col gap-2.5">
           <div class="flex justify-between items-center">
             <span class="text-xs mono uppercase text-zinc-300 font-semibold">Personal Instructions</span>
-            <span class="text-[10px] mono text-cyan-400">Custom System Prompt</span>
           </div>
           <div class="text-[11px] mono text-zinc-400">
             Define custom behavioral instructions, tone, humor, and response guidelines for PenBot:
@@ -553,8 +526,7 @@
         <!-- Bot Customization Card -->
         <div class="glass rounded-2xl p-4 flex flex-col gap-3">
           <div class="flex justify-between items-center">
-            <span class="text-xs mono uppercase text-zinc-400">Companion Identity</span>
-            <span class="text-[10px] mono text-cyan-400">Non-Volatile Storage (NVS)</span>
+            <span class="text-xs mono uppercase text-zinc-400">Robot Identity</span>
           </div>
           <div class="flex flex-wrap items-center justify-between gap-3 p-3 bg-zinc-900/80 rounded-xl border border-white/5">
             <div>
@@ -570,8 +542,7 @@
         <!-- Clean Hardware Architecture -->
         <div class="glass rounded-2xl p-4 overflow-x-auto">
           <div class="flex justify-between items-center mb-2">
-            <span class="text-xs mono uppercase text-zinc-400">Hardware Subsystems</span>
-            <span class="text-[10px] mono text-cyan-400">Dual-Core Xtensa LX7</span>
+            <span class="text-xs mono uppercase text-zinc-400">Hardware Specification</span>
           </div>
           <table class="w-full text-left text-xs mono">
             <thead>
@@ -583,18 +554,18 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-white/5 text-zinc-200">
-              <tr><td class="py-2 text-cyan-400 font-bold">Model Version</td><td>pen.v1</td><td>Autonomous Desktop Companion</td><td class="text-cyan-400 font-bold">Model: pen.v1</td></tr>
-              <tr><td class="py-2 text-emerald-400 font-bold">Firmware Version</td><td>v1.0.0</td><td>Dual-Core FreeRTOS Monolith</td><td class="text-emerald-400 font-bold">v1.0.0 (OTA Ready)</td></tr>
-              <tr><td class="py-2 text-amber-300 font-semibold">Battery Capacity</td><td>1S 18650 Li-Ion (3000mAh)</td><td>MT3608 5V Boost Regulator</td><td>3.7V Nominal &rarr; 5V Rail</td></tr>
-              <tr><td class="py-2 text-cyan-300 font-semibold">Display</td><td>1.3" IPS TFT (ST7789)</td><td>60FPS Eyes Buffer (240x240)</td><td>3.3V (SPI DMA)</td></tr>
-              <tr><td class="py-2 text-cyan-300 font-semibold">Microphone</td><td>INMP441 / MSM261</td><td>Digital I2S Audio In</td><td>3.3V</td></tr>
-              <tr><td class="py-2 text-cyan-300 font-semibold">Amplifier</td><td>MAX98357A Class-D</td><td>3W Speaker Audio Out</td><td>5V Boost Rail</td></tr>
-              <tr><td class="py-2 text-emerald-300 font-semibold">Head Laser</td><td>VL53L0X ToF (Head)</td><td>Mounted Above LCD (Pans with Neck)</td><td>3.3V</td></tr>
-              <tr><td class="py-2 text-emerald-300 font-semibold">Body Ultrasonic</td><td>HC-SR04 / HC-SR04P</td><td>Mounted in Front of Robot Body</td><td>3.3V / 5V</td></tr>
-              <tr><td class="py-2 text-emerald-300 font-semibold">Drop Safety</td><td>TCRT5000 Dual IR</td><td>Table Cliff &amp; Mid-Air Grab Protection</td><td>3.3V</td></tr>
-              <tr><td class="py-2 text-amber-300 font-semibold">Capacitive</td><td>Brass Standoff Screw</td><td>Touch Interaction (GPIO 4)</td><td>Internal S3</td></tr>
-              <tr><td class="py-2 text-purple-300 font-semibold">Drive Base</td><td>Continuous Micro Servos</td><td>Differential Kinematics</td><td>5V + 1000uF Cap</td></tr>
-              <tr><td class="py-2 text-purple-300 font-semibold">Neck</td><td>180° Micro Servo</td><td>Horizontal Panning (No Tilt)</td><td>5V + 1000uF Cap</td></tr>
+              <tr><td class="py-2 font-medium">Model Version</td><td>pen.v1</td><td>Autonomous Desktop Companion</td><td class="font-medium">Model: pen.v1</td></tr>
+              <tr><td class="py-2 font-medium">Firmware Version</td><td>v1.0.0</td><td>Dual-Core FreeRTOS Monolith</td><td class="font-medium">v1.0.0</td></tr>
+              <tr><td class="py-2 font-medium">Battery Capacity</td><td>1S 18650 Li-Ion (3000mAh)</td><td>MT3608 5V Boost Regulator</td><td>3.7V Nominal &rarr; 5V Rail</td></tr>
+              <tr><td class="py-2 font-medium">Display</td><td>1.3" IPS TFT (ST7789)</td><td>60FPS Eyes Buffer (240x240)</td><td>3.3V (SPI DMA)</td></tr>
+              <tr><td class="py-2 font-medium">Microphone</td><td>INMP441 / MSM261</td><td>Digital I2S Audio In</td><td>3.3V</td></tr>
+              <tr><td class="py-2 font-medium">Amplifier</td><td>MAX98357A Class-D</td><td>3W Speaker Audio Out</td><td>5V Boost Rail</td></tr>
+              <tr><td class="py-2 font-medium">Head Laser</td><td>VL53L0X ToF (Head)</td><td>Mounted Above LCD (Pans with Neck)</td><td>3.3V</td></tr>
+              <tr><td class="py-2 font-medium">Body Ultrasonic</td><td>HC-SR04 / HC-SR04P</td><td>Mounted in Front of Robot Body</td><td>3.3V / 5V</td></tr>
+              <tr><td class="py-2 font-medium">Drop Safety</td><td>TCRT5000 Dual IR</td><td>Table Cliff &amp; Mid-Air Grab Protection</td><td>3.3V</td></tr>
+              <tr><td class="py-2 font-medium">Capacitive</td><td>Brass Standoff Screw</td><td>Touch Interaction (GPIO 4)</td><td>Internal S3</td></tr>
+              <tr><td class="py-2 font-medium">Drive Base</td><td>Continuous Micro Servos</td><td>Differential Kinematics</td><td>5V + 1000uF Cap</td></tr>
+              <tr><td class="py-2 font-medium">Neck</td><td>180° Micro Servo</td><td>Horizontal Panning (No Tilt)</td><td>5V + 1000uF Cap</td></tr>
             </tbody>
           </table>
         </div>
@@ -602,8 +573,7 @@
         <!-- Firmware Management -->
         <div class="glass rounded-2xl p-4 flex flex-col gap-3">
           <div class="flex justify-between items-center">
-            <span class="text-xs mono uppercase text-zinc-400">Firmware Maintenance</span>
-            <span class="text-[10px] mono text-emerald-400">OTA Ready</span>
+            <span class="text-xs mono uppercase text-zinc-400 font-semibold">Firmware Update</span>
           </div>
           <div class="flex flex-wrap items-center justify-between gap-3 p-3 bg-zinc-900/80 rounded-xl border border-white/5">
             <div>
@@ -618,15 +588,6 @@
 
       </div>
 
-      <!-- Real-Time Event Stream -->
-      <div class="glass rounded-2xl p-3">
-        <div class="flex items-center justify-between mb-1.5">
-          <span class="text-[11px] mono uppercase text-zinc-400">Log</span>
-          <button id="clearLogBtn" class="text-[10px] mono text-zinc-500 hover:text-zinc-300">Clear</button>
-        </div>
-        <div id="eventLog" class="h-28 overflow-y-auto bg-black/80 rounded-lg p-2 text-[11px] mono text-zinc-300 space-y-1 border border-white/5"></div>
-      </div>
-
     </section>
   </main>
 
@@ -637,7 +598,6 @@
     <div class="glass rounded-2xl p-6 w-full max-w-md border border-white/10 shadow-2xl space-y-4">
       <div class="flex justify-between items-center">
         <h3 class="text-sm font-bold mono uppercase text-white">Rename Robot Companion</h3>
-        <button id="closeRenameModalBtn" class="text-zinc-400 hover:text-white mono text-xs">[Close]</button>
       </div>
 
       <p class="text-xs text-zinc-400">
@@ -680,7 +640,6 @@
     <div class="glass rounded-2xl p-6 w-full max-w-md border border-rose-500/30 shadow-2xl space-y-4">
       <div class="flex justify-between items-center">
         <h3 class="text-sm font-bold mono uppercase text-rose-400">Firmware Flash / OTA Update</h3>
-        <button id="closeFlashModalBtn" class="text-zinc-400 hover:text-white mono text-xs">[Close]</button>
       </div>
 
       <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 space-y-1.5 text-xs text-rose-200">
@@ -766,11 +725,16 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     };
 
     function logEvent(msg, color = 'text-zinc-300') {
+      if (!eventLog) return;
       const line = document.createElement('div');
       const time = new Date().toLocaleTimeString();
       line.className = color;
       line.textContent = `[${time}] ${msg}`;
-      eventLog.prepend(line);
+      eventLog.appendChild(line);
+      while (eventLog.children.length > 50) {
+        eventLog.removeChild(eventLog.firstChild);
+      }
+      eventLog.scrollTop = eventLog.scrollHeight;
     }
 
     logEvent('Display initialized: 240x240 PSRAM Sprite @ 60FPS', 'text-cyan-400');
@@ -1106,12 +1070,15 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     // WEBSOCKET COMMUNICATION HUB & TELEMETRY SYNC
     // -------------------------------------------------------------------------
     let ws = null;
-    const robotHostInput = document.getElementById('robotHostInput');
-    const connectWsBtn = document.getElementById('connectWsBtn');
+    let touchHappyTimeout = null;
     const wsStatusBadge = document.getElementById('wsStatusBadge');
     const wsStatusDot = document.getElementById('wsStatusDot');
     const wsModeText = document.getElementById('wsModeText');
     const liveStatusPulse = document.getElementById('liveStatusPulse');
+
+    function getRobotHost() {
+      return (window.location.protocol.startsWith('http') && window.location.host) ? window.location.host : 'penbot.local';
+    }
 
     // Telemetry Gauges & Sensor Controls
     const tofSlider = document.getElementById('tofSimSlider');
@@ -1132,20 +1099,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       if (tofSlider) tofSlider.value = distanceMm;
       if (tofText) {
         tofText.textContent = `${distanceMm} mm`;
-        tofText.className = distanceMm < 120 ? 'text-rose-400 font-bold text-sm' : 'text-cyan-400 font-bold text-sm';
-      }
-      if (tofMeterBar) {
-        const pct = Math.min(100, Math.max(0, Math.round((distanceMm / 1200) * 100)));
-        tofMeterBar.style.width = `${pct}%`;
-      }
-      if (tofStatusPill) {
-        if (distanceMm < 120) {
-          tofStatusPill.textContent = 'OBSTACLE STOP';
-          tofStatusPill.className = 'px-1.5 py-0.5 rounded text-[9px] bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30';
-        } else {
-          tofStatusPill.textContent = 'CLEAR';
-          tofStatusPill.className = 'px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-300 font-semibold';
-        }
+        tofText.className = distanceMm < 120 ? 'text-rose-400 font-bold text-sm animate-pulse' : 'text-cyan-400 font-bold text-sm';
       }
     }
 
@@ -1154,20 +1108,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       if (usonicSlider) usonicSlider.value = distanceMm;
       if (usonicText) {
         usonicText.textContent = `${distanceMm} mm`;
-        usonicText.className = distanceMm < 120 ? 'text-rose-400 font-bold text-sm' : 'text-cyan-400 font-bold text-sm';
-      }
-      if (usonicMeterBar) {
-        const pct = Math.min(100, Math.max(0, Math.round((distanceMm / 2000) * 100)));
-        usonicMeterBar.style.width = `${pct}%`;
-      }
-      if (usonicStatusPill) {
-        if (distanceMm < 120) {
-          usonicStatusPill.textContent = 'OBSTACLE STOP';
-          usonicStatusPill.className = 'px-1.5 py-0.5 rounded text-[9px] bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30';
-        } else {
-          usonicStatusPill.textContent = 'CLEAR';
-          usonicStatusPill.className = 'px-1.5 py-0.5 rounded text-[9px] bg-emerald-500/20 text-emerald-300 font-semibold';
-        }
+        usonicText.className = distanceMm < 120 ? 'text-rose-400 font-bold text-sm animate-pulse' : 'text-cyan-400 font-bold text-sm';
       }
     }
 
@@ -1188,31 +1129,26 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     updateTofTelemetry(state.tofMm);
     updateUsonicTelemetry(state.usonicMm);
 
-    if (window.location.protocol.startsWith('http')) {
-      robotHostInput.value = window.location.host;
-    }
-
     function initWebSocket(host) {
       if (ws) {
         try { ws.close(); } catch(e) {}
       }
 
-      const targetUrl = `ws://${host}/ws`;
+      const targetHost = host || getRobotHost();
+      const targetUrl = `ws://${targetHost}/ws`;
       logEvent(`Connecting: ${targetUrl}`, 'text-cyan-300');
-      wsStatusDot.className = 'h-2 w-2 rounded-full bg-amber-400 animate-ping';
-      wsModeText.textContent = `CONNECTING...`;
+      if (wsStatusDot) wsStatusDot.className = 'h-2 w-2 rounded-full bg-amber-400 animate-ping';
+      if (wsModeText) wsModeText.textContent = `CONNECTING...`;
 
       try {
         ws = new WebSocket(targetUrl);
 
         ws.onopen = () => {
           state.wsConnected = true;
-          wsStatusBadge.className = 'px-2.5 py-1 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 font-semibold';
-          wsStatusDot.className = 'h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
-          wsModeText.textContent = `LIVE (${host})`;
-          liveStatusPulse.className = 'h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]';
-          connectWsBtn.textContent = 'Disconnect';
-          connectWsBtn.className = 'px-3 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-semibold transition active:scale-95';
+          if (wsStatusBadge) wsStatusBadge.className = 'px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 font-semibold text-xs shadow-[0_0_8px_rgba(16,185,129,0.25)]';
+          if (wsStatusDot) wsStatusDot.className = 'h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse';
+          if (wsModeText) wsModeText.textContent = `CONNECTED (${targetHost})`;
+          if (liveStatusPulse) liveStatusPulse.className = 'h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_#34d399]';
           logEvent('WebSocket hardware connection established', 'text-emerald-400 font-bold');
 
           fetchWifiStatus();
@@ -1243,6 +1179,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
             if (data.touch !== undefined && data.touch) {
               setActiveEmotionBtn(1);
+              if (touchHappyTimeout) clearTimeout(touchHappyTimeout);
+              touchHappyTimeout = setTimeout(() => {
+                if (state.emotion === 1) {
+                  setActiveEmotionBtn(0);
+                }
+              }, 2500);
             }
 
             if (data.botName !== undefined && data.botName !== state.botName) {
@@ -1268,13 +1210,12 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
         ws.onclose = () => {
           state.wsConnected = false;
-          wsStatusBadge.className = 'px-2.5 py-1 rounded-md bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 flex items-center gap-1.5 font-semibold';
-          wsStatusDot.className = 'h-2 w-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#06b6d4]';
-          wsModeText.textContent = 'ROBOT LINK READY';
-          liveStatusPulse.className = 'h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_#06b6d4]';
-          connectWsBtn.textContent = 'Connect';
-          connectWsBtn.className = 'px-3 py-1 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-semibold transition active:scale-95';
-          logEvent('Robot OS Console Standby • Ready for hardware link', 'text-zinc-400');
+          if (wsStatusBadge) wsStatusBadge.className = 'px-2.5 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 font-semibold text-xs';
+          if (wsStatusDot) wsStatusDot.className = 'h-2 w-2 rounded-full bg-rose-400';
+          if (wsModeText) wsModeText.textContent = 'DISCONNECTED';
+          if (liveStatusPulse) liveStatusPulse.className = 'h-2.5 w-2.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_#06b6d4]';
+          logEvent('Robot OS Console Standby • Reconnecting in 3s...', 'text-zinc-400');
+          setTimeout(() => initWebSocket(getRobotHost()), 3000);
         };
 
         ws.onerror = (err) => {
@@ -1283,6 +1224,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
       } catch (err) {
         logEvent(`Connection failed: ${err.message}`, 'text-rose-400');
+        setTimeout(() => initWebSocket(getRobotHost()), 4000);
       }
     }
 
@@ -1301,18 +1243,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
     setInterval(sendRobotCommand, 50);
 
-    connectWsBtn.addEventListener('click', () => {
-      if (state.wsConnected) {
-        if (ws) ws.close();
-      } else {
-        const host = robotHostInput.value.trim() || 'penbot.local';
-        initWebSocket(host);
-      }
-    });
-
-    if (window.location.protocol.startsWith('http')) {
-      initWebSocket(window.location.host);
-    }
+    initWebSocket(getRobotHost());
 
     // -------------------------------------------------------------------------
     // BOT RENAMING FEATURE
@@ -1343,10 +1274,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       renameModal.classList.add('hidden');
     }
 
-    document.getElementById('openRenameModalBtn').addEventListener('click', openRenameModal);
-    document.getElementById('renameBotInlineBtn').addEventListener('click', openRenameModal);
-    document.getElementById('closeRenameModalBtn').addEventListener('click', closeRenameModal);
-    document.getElementById('cancelRenameBtn').addEventListener('click', closeRenameModal);
+    document.getElementById('openRenameModalBtn')?.addEventListener('click', openRenameModal);
+    document.getElementById('renameBotInlineBtn')?.addEventListener('click', openRenameModal);
+    document.getElementById('closeRenameModalBtn')?.addEventListener('click', closeRenameModal);
+    document.getElementById('cancelRenameBtn')?.addEventListener('click', closeRenameModal);
 
     // Preset suggestion buttons
     document.querySelectorAll('.name-suggestion-btn').forEach(btn => {
@@ -1363,7 +1294,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       applyBotNameUpdate(candidateName);
       closeRenameModal();
 
-      const host = robotHostInput.value.trim() || 'penbot.local';
+      const host = getRobotHost();
       if (state.wsConnected) {
         try {
           await fetch(`http://${host}/api/bot/rename`, {
@@ -1378,7 +1309,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     });
 
     async function fetchBotInfo() {
-      const host = robotHostInput.value.trim() || 'penbot.local';
+      const host = getRobotHost();
       try {
         const res = await fetch(`http://${host}/api/bot/info`);
         if (res.ok) {
@@ -1412,10 +1343,10 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       flashModal.classList.add('hidden');
     }
 
-    document.getElementById('openFlashModalBtn').addEventListener('click', openFlashModal);
-    document.getElementById('flashFirmwareInlineBtn').addEventListener('click', openFlashModal);
-    document.getElementById('closeFlashModalBtn').addEventListener('click', closeFlashModal);
-    document.getElementById('cancelFlashBtn').addEventListener('click', closeFlashModal);
+    document.getElementById('openFlashModalBtn')?.addEventListener('click', openFlashModal);
+    document.getElementById('flashFirmwareInlineBtn')?.addEventListener('click', openFlashModal);
+    document.getElementById('closeFlashModalBtn')?.addEventListener('click', closeFlashModal);
+    document.getElementById('cancelFlashBtn')?.addEventListener('click', closeFlashModal);
 
     function checkFlashReadiness() {
       const hasFile = firmwareFileInput.files && firmwareFileInput.files.length > 0;
@@ -1439,7 +1370,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
       logEvent(`Initiating OTA firmware update with file: ${file.name} (${(file.size/1024).toFixed(1)} KB)...`, 'text-amber-300 font-bold');
 
-      const host = robotHostInput.value.trim() || 'penbot.local';
+      const host = getRobotHost();
       const xhr = new XMLHttpRequest();
 
       xhr.upload.onprogress = (e) => {
@@ -1500,7 +1431,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     let qrCurrentMode = 'WIFI';
 
     function renderDynamicQr() {
-      const host = robotHostInput.value.trim() || '192.168.4.1';
+      const host = (window.location.protocol.startsWith('http') && window.location.host) ? window.location.host : '192.168.4.1';
       let payload = '';
 
       if (qrCurrentMode === 'WIFI') {
@@ -1565,7 +1496,9 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         if (btn) btn.textContent = 'Return to Procedural Eyes';
         if (sideBtn) sideBtn.textContent = 'Hide Setup QR';
         document.querySelectorAll('.emotion-btn').forEach(b => {
-          b.className = 'emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900/80 text-zinc-400 border border-white/10 hover:text-white';
+          const emo = parseInt(b.dataset.emotion, 10);
+          const style = emotionButtonStyles[emo];
+          b.className = `emotion-btn py-1.5 px-2 rounded-lg text-xs mono font-bold transition ${style ? style.inactive : 'bg-zinc-900 text-zinc-400 border border-white/10'}`;
         });
         logEvent('Display mode: Setup QR Code screen active', 'text-cyan-300 font-semibold');
       } else {
@@ -1576,8 +1509,8 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       }
       sendRobotCommand();
     }
-    document.getElementById('screenPairingQrTrigger').addEventListener('click', toggleScreenQr);
-    document.getElementById('toggleScreenQrBtn').addEventListener('click', toggleScreenQr);
+    document.getElementById('screenPairingQrTrigger')?.addEventListener('click', toggleScreenQr);
+    document.getElementById('toggleScreenQrBtn')?.addEventListener('click', toggleScreenQr);
 
     // Wi-Fi UI Sync
     const wifiModeBadge = document.getElementById('wifiModeBadge');
@@ -1597,7 +1530,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     }
 
     async function fetchWifiStatus() {
-      const host = robotHostInput.value.trim() || 'penbot.local';
+      const host = getRobotHost();
       try {
         const res = await fetch(`http://${host}/api/wifi/status`);
         if (res.ok) {
@@ -1626,29 +1559,38 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       logEvent('Scanning for nearby Wi-Fi access points...', 'text-cyan-300');
 
       let networks = [];
-      const host = robotHostInput.value.trim() || 'penbot.local';
+      const host = getRobotHost();
+      const fetchUrl = (window.location.protocol.startsWith('http') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')
+        ? '/api/wifi/scan'
+        : `http://${host}/api/wifi/scan`;
 
-      if (state.wsConnected) {
-        try {
-          const res = await fetch(`http://${host}/api/wifi/scan`);
-          if (res.ok) {
-            networks = await res.json();
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+        const res = await fetch(fetchUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            networks = data.filter(n => n && n.ssid && n.ssid.trim().length > 0);
+            networks.sort((a, b) => (b.rssi || -100) - (a.rssi || -100));
           }
-        } catch (e) {}
-      }
-
-      if (!networks || networks.length === 0) {
-        networks = [
-          { ssid: 'CyberLab_2.4G', rssi: -48, secure: true },
-          { ssid: 'Home_WiFi_Mesh', rssi: -62, secure: true },
-          { ssid: 'Office_Guest', rssi: -71, secure: true },
-          { ssid: 'Public_Hotspot', rssi: -82, secure: false }
-        ];
+        } else {
+          logEvent(`Wi-Fi scan failed: HTTP ${res.status}`, 'text-rose-400');
+        }
+      } catch (e) {
+        logEvent(`Wi-Fi scan request error: ${e.message}`, 'text-rose-400');
       }
 
       scanWifiSpinner.className = 'hidden';
       scanWifiBtn.disabled = false;
       scannedNetworksList.innerHTML = '';
+
+      if (!networks || networks.length === 0) {
+        scannedNetworksList.innerHTML = '<div class="text-zinc-500 text-center py-6 text-xs mono">No Wi-Fi networks found. Try scanning again.</div>';
+        logEvent('No Wi-Fi networks found within range', 'text-amber-300');
+        return;
+      }
 
       networks.forEach(net => {
         const row = document.createElement('div');
@@ -1675,7 +1617,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         scannedNetworksList.appendChild(row);
       });
 
-      logEvent(`Found ${networks.length} available 2.4GHz access points`, 'text-emerald-400');
+      logEvent(`Found ${networks.length} real Wi-Fi access points`, 'text-emerald-400');
     });
 
     // Password visibility toggle
@@ -1704,7 +1646,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       saveWifiBtn.textContent = 'Connecting... Negotiating DHCP...';
       logEvent(`Transmitting Wi-Fi credentials for "${ssid}"...`, 'text-amber-300');
 
-      const host = robotHostInput.value.trim() || 'penbot.local';
+      const host = getRobotHost();
       if (state.wsConnected) {
         try {
           const res = await fetch(`http://${host}/api/wifi/connect`, {
@@ -1738,7 +1680,7 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     // Reset Wi-Fi
     document.getElementById('resetWifiBtn').addEventListener('click', async () => {
       if (!confirm('Revert robot back to default AP setup mode?')) return;
-      const host = robotHostInput.value.trim() || 'penbot.local';
+      const host = getRobotHost();
       if (state.wsConnected) {
         try {
           await fetch(`http://${host}/api/wifi/reset`, { method: 'POST' });
@@ -1771,6 +1713,37 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     // -------------------------------------------------------------------------
     // PROCEDURAL EMOTIONS & SENSOR TELEMETRY CONTROLS
     // -------------------------------------------------------------------------
+    const emotionButtonStyles = {
+      0: {
+        active: 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(6,182,212,0.35)]',
+        inactive: 'bg-zinc-900 text-cyan-400 border border-cyan-500/20 hover:text-cyan-300'
+      },
+      1: {
+        active: 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/60 shadow-[0_0_12px_rgba(52,211,153,0.35)]',
+        inactive: 'bg-zinc-900 text-emerald-400 border border-emerald-500/20 hover:text-emerald-300'
+      },
+      2: {
+        active: 'bg-rose-500/25 text-rose-300 border border-rose-500/60 shadow-[0_0_12px_rgba(244,63,94,0.35)]',
+        inactive: 'bg-zinc-900 text-rose-400 border border-rose-500/20 hover:text-rose-300'
+      },
+      3: {
+        active: 'bg-amber-500/25 text-amber-300 border border-amber-500/60 shadow-[0_0_12px_rgba(251,191,36,0.35)]',
+        inactive: 'bg-zinc-900 text-amber-300 border border-amber-500/20 hover:text-amber-200'
+      },
+      4: {
+        active: 'bg-slate-500/25 text-slate-300 border border-slate-400/60 shadow-[0_0_12px_rgba(100,116,139,0.35)]',
+        inactive: 'bg-zinc-900 text-slate-400 border border-slate-500/20 hover:text-slate-300'
+      },
+      5: {
+        active: 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/60 shadow-[0_0_12px_rgba(0,242,254,0.35)]',
+        inactive: 'bg-zinc-900 text-cyan-400 border border-cyan-500/20 hover:text-cyan-300'
+      },
+      6: {
+        active: 'bg-fuchsia-500/25 text-fuchsia-300 border border-fuchsia-400/60 shadow-[0_0_12px_rgba(232,121,249,0.35)]',
+        inactive: 'bg-zinc-900 text-fuchsia-300 border border-fuchsia-500/20 hover:text-fuchsia-200'
+      }
+    };
+
     function setActiveEmotionBtn(emotionIdx) {
       state.emotion = emotionIdx;
       state.showPairingQr = false;
@@ -1778,13 +1751,13 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       const sideBtn = document.getElementById('toggleScreenQrBtn');
       if (btn) btn.textContent = 'Show Setup QR on Screen';
       if (sideBtn) sideBtn.textContent = 'Toggle Setup QR';
+
       document.querySelectorAll('.emotion-btn').forEach(b => {
-        b.className = 'emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-zinc-900/80 text-zinc-400 border border-white/10 hover:text-white';
+        const emo = parseInt(b.dataset.emotion, 10);
+        const style = emotionButtonStyles[emo];
+        const isActive = (emo === emotionIdx);
+        b.className = `emotion-btn py-1.5 px-2 rounded-lg text-xs mono font-bold transition ${style ? (isActive ? style.active : style.inactive) : (isActive ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-zinc-900 text-zinc-400 border border-white/10')}`;
       });
-      const activeBtn = document.querySelector(`.emotion-btn[data-emotion="${emotionIdx}"]`);
-      if (activeBtn) {
-        activeBtn.className = 'emotion-btn py-1.5 px-2 rounded-lg text-xs mono bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold';
-      }
       sendRobotCommand();
     }
 
@@ -1797,9 +1770,16 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
     });
 
     // Touch Sensor trigger
-    document.getElementById('touchSimBtn').addEventListener('click', () => {
+    document.getElementById('touchSimBtn')?.addEventListener('click', () => {
       setActiveEmotionBtn(1);
       logEvent('Touch sensor triggered -> Emotion: HAPPY (^ ^)', 'text-amber-300 font-semibold');
+      if (touchHappyTimeout) clearTimeout(touchHappyTimeout);
+      touchHappyTimeout = setTimeout(() => {
+        if (state.emotion === 1) {
+          setActiveEmotionBtn(0);
+          logEvent('Touch timeout -> Emotion reverted to IDLE', 'text-cyan-300');
+        }
+      }, 2500);
     });
 
     // Dual Distance Controls: Head Laser (ToF, above LCD) & Body Ultrasonic (Front)

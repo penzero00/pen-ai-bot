@@ -395,7 +395,6 @@
       <div class="glass rounded-2xl p-4 space-y-2.5">
         <div class="flex justify-between items-center">
           <span class="text-xs mono uppercase text-zinc-300 font-semibold">Personal Instructions</span>
-          <span class="text-[10px] mono text-cyan-400">Custom System Prompt</span>
         </div>
         <div class="text-[11px] mono text-zinc-400">
           Define custom behavior, personality traits, and instructions for PenBot:
@@ -470,7 +469,7 @@
           </div>
           <div class="text-[10px] mono text-zinc-500 text-right">
             <div>Model: <span class="text-zinc-300">pen.v1</span></div>
-            <div>Firmware: <span class="text-emerald-400">v1.0.0</span></div>
+            <div>Firmware: <span class="text-zinc-300">v1.0.0</span></div>
           </div>
         </div>
       </div>
@@ -481,8 +480,8 @@
           <span class="text-xs mono uppercase text-zinc-300 font-semibold">Hardware Specifications</span>
         </div>
         <div class="text-[11px] mono text-zinc-400 space-y-1.5 divide-y divide-white/5">
-          <div class="flex justify-between pt-1"><span>Model Version:</span><span class="text-cyan-400 font-bold">pen.v1</span></div>
-          <div class="flex justify-between pt-1"><span>Firmware Version:</span><span class="text-emerald-400 font-bold">v1.0.0</span></div>
+          <div class="flex justify-between pt-1"><span>Model Version:</span><span class="text-zinc-200 font-semibold">pen.v1</span></div>
+          <div class="flex justify-between pt-1"><span>Firmware Version:</span><span class="text-zinc-200 font-semibold">v1.0.0</span></div>
           <div class="flex justify-between pt-1"><span>Microcontroller:</span><span class="text-zinc-200">ESP32-S3 DevKitC-1 (240MHz)</span></div>
           <div class="flex justify-between pt-1"><span>Memory Architecture:</span><span class="text-zinc-200">16MB Flash &bull; 8MB Octal PSRAM</span></div>
           <div class="flex justify-between pt-1"><span>Battery Capacity:</span><span class="text-zinc-200">1S 18650 Li-Ion 3000mAh (5V Boost)</span></div>
@@ -500,7 +499,6 @@
       <div class="glass rounded-2xl p-4 space-y-2.5">
         <div class="flex justify-between items-center">
           <span class="text-xs mono uppercase text-zinc-300 font-semibold">Firmware Update</span>
-          <span class="text-[10px] mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">OTA Ready</span>
         </div>
         <div class="text-[11px] mono text-zinc-400">
           Flash updates over local Wi-Fi without USB cables. Select a compiled <code class="text-rose-300">firmware.bin</code> image.
@@ -559,7 +557,6 @@
     <div class="glass rounded-2xl p-5 w-full max-w-sm border border-white/10 space-y-3">
       <div class="flex justify-between items-center">
         <h3 class="text-xs font-bold mono uppercase text-white">Rename Robot</h3>
-        <button id="closeRenameModalBtn" class="text-zinc-400 mono text-xs">[Close]</button>
       </div>
       <div class="text-[11px] mono text-zinc-400">
         Personalize PenBot's identity, AP SSID prefix, and dashboard title:
@@ -580,7 +577,6 @@
     <div class="glass rounded-2xl p-5 w-full max-w-sm border border-rose-500/30 shadow-2xl space-y-3">
       <div class="flex justify-between items-center">
         <h3 class="text-xs font-bold mono uppercase text-rose-400">Firmware Flash / OTA Update</h3>
-        <button id="closeFlashModalBtn" class="text-zinc-400 hover:text-white mono text-xs">[Close]</button>
       </div>
 
       <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 space-y-1 text-xs text-rose-200">
@@ -1016,10 +1012,11 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         const div = document.createElement('div');
         div.className = `flex gap-1.5 ${colorClass}`;
         div.innerHTML = `<span class="text-zinc-500">[${time}]</span> <span>${msg}</span>`;
-        box.prepend(div);
-        while (box.children.length > 40) {
-          box.removeChild(box.lastChild);
+        box.appendChild(div);
+        while (box.children.length > 50) {
+          box.removeChild(box.firstChild);
         }
+        box.scrollTop = box.scrollHeight;
       });
     }
 
@@ -1258,9 +1255,17 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
       });
     });
 
+    let touchHappyTimeout = null;
     const triggerTouch = () => {
       setActiveEmotion(1);
       logEvent('Touch sensor triggered -> Emotion: HAPPY (^ ^)', 'text-amber-300 font-semibold');
+      if (touchHappyTimeout) clearTimeout(touchHappyTimeout);
+      touchHappyTimeout = setTimeout(() => {
+        if (state.emotion === 1) {
+          setActiveEmotion(0);
+          logEvent('Touch timeout -> Emotion reverted to IDLE', 'text-cyan-300');
+        }
+      }, 2500);
     };
     document.getElementById('quickTouchBtn')?.addEventListener('click', triggerTouch);
     document.getElementById('touchSimBtn2')?.addEventListener('click', triggerTouch);
@@ -1392,29 +1397,37 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
 
       let networks = [];
       const host = window.location.host || 'penbot.local';
+      const fetchUrl = (window.location.protocol.startsWith('http') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')
+        ? '/api/wifi/scan'
+        : `http://${host}/api/wifi/scan`;
 
-      if (state.wsConnected) {
-        try {
-          const res = await fetch(`http://${host}/api/wifi/scan`);
-          if (res.ok) {
-            networks = await res.json();
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000);
+        const res = await fetch(fetchUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            networks = data.filter(n => n && n.ssid && n.ssid.trim().length > 0);
+            networks.sort((a, b) => (b.rssi || -100) - (a.rssi || -100));
           }
-        } catch(e) {}
-      }
-
-      if (!networks || networks.length === 0) {
-        // Discovery demo networks
-        networks = [
-          { ssid: 'CyberLab_2.4G', rssi: -48, secure: true },
-          { ssid: 'Home_WiFi_Mesh', rssi: -62, secure: true },
-          { ssid: 'Office_Guest', rssi: -71, secure: true },
-          { ssid: 'Public_Hotspot', rssi: -82, secure: false }
-        ];
+        } else {
+          logEvent(`Wi-Fi scan failed: HTTP ${res.status}`, 'text-rose-400');
+        }
+      } catch(e) {
+        logEvent(`Wi-Fi scan request error: ${e.message}`, 'text-rose-400');
       }
 
       scanWifiSpinner.className = 'hidden';
       scanWifiBtn.disabled = false;
       scannedNetworksList.innerHTML = '';
+
+      if (!networks || networks.length === 0) {
+        scannedNetworksList.innerHTML = '<div class="text-zinc-500 text-center py-6 text-xs mono">No Wi-Fi networks found. Try scanning again.</div>';
+        logEvent('No Wi-Fi networks found within range', 'text-amber-300');
+        return;
+      }
 
       networks.forEach(net => {
         const row = document.createElement('div');
@@ -1440,17 +1453,36 @@ var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],
         scannedNetworksList.appendChild(row);
       });
 
-      logEvent(`Discovered ${networks.length} Wi-Fi access points`, 'text-emerald-400 font-semibold');
+      logEvent(`Found ${networks.length} real Wi-Fi access points`, 'text-emerald-400 font-semibold');
     });
 
-    document.getElementById('saveWifiBtn')?.addEventListener('click', () => {
+    document.getElementById('saveWifiBtn')?.addEventListener('click', async () => {
       const ssid = wifiSsidInput.value.trim();
       const pass = wifiPassInput.value;
-      if (!ssid) return;
+      if (!ssid) {
+        alert('Please select or enter an SSID');
+        return;
+      }
       logEvent(`Connecting to Wi-Fi: "${ssid}"...`, 'text-cyan-300 font-semibold');
-      setTimeout(() => {
-        logEvent(`Wi-Fi credentials saved for "${ssid}". ESP32-S3 joining station mode.`, 'text-emerald-400 font-bold');
-      }, 1000);
+      const host = window.location.host || 'penbot.local';
+      const connectUrl = (window.location.protocol.startsWith('http') && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1')
+        ? '/api/wifi/connect'
+        : `http://${host}/api/wifi/connect`;
+
+      try {
+        const res = await fetch(connectUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ssid, pass })
+        });
+        if (res.ok) {
+          logEvent(`Wi-Fi credentials saved for "${ssid}". ESP32-S3 joining station mode.`, 'text-emerald-400 font-bold');
+        } else {
+          logEvent(`Wi-Fi connect request failed: HTTP ${res.status}`, 'text-rose-400');
+        }
+      } catch (e) {
+        logEvent(`Wi-Fi connection error: ${e.message}`, 'text-rose-400');
+      }
     });
 
     // -------------------------------------------------------------------------
