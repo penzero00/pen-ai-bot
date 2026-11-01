@@ -54,16 +54,26 @@ pen-ai-bot/
 ├── AGENTS.md                         # Master Architecture & AI Coding Agent Directives (THIS FILE)
 ├── platformio.ini                    # PlatformIO ESP32-S3 N16R8 config, build flags & libraries
 ├── partitions_16MB.csv               # Custom 16MB partition table (4MB App / 8MB LittleFS / NVS)
+├── scripts/
+│   └── embed_web.py                  # Auto-sync hook: web-dashboard/ -> firmware/data/ (pre:buildfs)
 ├── firmware/
 │   ├── include/
 │   │   ├── config.h                  # Locked GPIO pinout macros & safety thresholds
 │   │   └── state.h                   # Thread-safe FreeRTOS structs, queues, emotions & VoiceConfig
 │   ├── src/
 │   │   └── main.cpp                  # Dual-core FreeRTOS orchestrator (Core 0 Net/AI, Core 1 HW/Eyes)
-│   └── data/                         # Compiled/minified web assets flashed to ESP32 LittleFS
-│       └── index.html                # Embedded Cyber-Dashboard SPA
+│   └── data/                         # Exact LittleFS flash mirror of web-dashboard/ (100% parity)
+│       ├── index.html                # Automatic responsive device dispatcher
+│       ├── desktop/
+│       │   └── index.html            # Desktop Studio (Widescreen 12-col telemetry & studio)
+│       └── mobile/
+│           └── index.html            # Mobile Companion OS (Touch-first bottom tabs & thumb RC)
 └── web-dashboard/
-    └── index.html                    # Source Cyber-Dashboard & 60FPS Hardware Simulator
+    ├── index.html                    # Automatic device-responsive router (mobile/ vs desktop/)
+    ├── desktop/
+    │   └── index.html                # Responsive Desktop Studio
+    └── mobile/
+        └── index.html                # Responsive Mobile Companion (touch-optimized)
 ```
 
 ---
@@ -95,10 +105,16 @@ All facial expressions are rendered procedurally at **60FPS** inside a `240x240`
 - **Servo Slew-Rate Limiting:** Never snap neck servos (`GPIO 37, 38`) instantaneously across wide angles; always interpolate via `easeValue()` to prevent current spikes on the MT3608 5V boost rail.
 - **Zero `delay()` in Tasks:** Never call blocking `delay()` inside `AsyncWebServer` callbacks. Use `vTaskDelay(pdMS_TO_TICKS(ms))` inside FreeRTOS tasks.
 
-### 3. Build & Flash Commands
+### 3. Web UI Parity & Mirroring Mandate (STRICT)
+- **Zero-Drift Rule:** The local preview files in `web-dashboard/` and the flashed LittleFS assets in `firmware/data/` MUST ALWAYS BE 100% IDENTICAL. What the user previews locally in their browser is guaranteed to be what is on the real robot once flashed.
+- **Automatic Sync Hook:** Whenever ANY edit is made to `web-dashboard/` (whether in `desktop/index.html`, `mobile/index.html`, or root `index.html`), agents MUST immediately run `python scripts/embed_web.py` to mirror all files into `firmware/data/`.
+- **Automatic Browser Responsiveness:** Mobile and Desktop UI are separated into dedicated folders (`mobile/` and `desktop/`). Routing between them is fully automatic based on screen width (`< 768px`) and mobile User-Agent. Do NOT add manual toggle buttons.
+- **Build Verification:** Always re-run `python -m platformio run --target buildfs` and `python -m platformio run` after web edits to verify the compiled LittleFS filesystem image contains the latest assets.
+
+### 4. Build & Flash Commands
 ```bash
-# 1. Copy the latest web dashboard into the LittleFS data folder
-mkdir -p firmware/data && cp web-dashboard/index.html firmware/data/index.html
+# 1. Mirror the latest web dashboard assets into LittleFS data folder
+python scripts/embed_web.py
 
 # 2. Compile C++ Firmware
 pio run
@@ -110,7 +126,7 @@ pio run --target uploadfs
 pio run --target upload
 ```
 
-### 4. Quick Push to `penzero00/pen-ai-bot`
+### 5. Quick Push to `penzero00/pen-ai-bot`
 ```bash
 git init
 git add AGENTS.md platformio.ini partitions_16MB.csv firmware/ web-dashboard/

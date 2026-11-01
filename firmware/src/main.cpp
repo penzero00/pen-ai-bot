@@ -716,6 +716,14 @@ void TaskCore0Network(void *pvParameters) {
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
 
+  // Direct route aliases for mobile and desktop interfaces
+  server.on("/mobile", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/mobile/index.html", "text/html");
+  });
+  server.on("/desktop", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(LittleFS, "/desktop/index.html", "text/html");
+  });
+
   // Serve Embedded Dashboard from LittleFS
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 

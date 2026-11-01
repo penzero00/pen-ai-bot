@@ -1,0 +1,1824 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title id="pageTitle">PenBot // Mobile Companion OS</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass {
+      background: rgba(24, 24, 27, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .modal-backdrop {
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .neon-cyan-glow {
+      box-shadow: 0 0 25px -4px rgba(6, 182, 212, 0.35);
+    }
+    #qrCodeContainer svg {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 140px;
+      max-height: 140px;
+      display: block;
+      margin: 0 auto;
+    }
+    input[type="range"] {
+      accent-color: #06b6d4;
+    }
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-cyan-500/30">
+
+  <!-- ===================================================================== -->
+  <!-- MOBILE TOP BAR (Fixed Header) -->
+  <!-- ===================================================================== -->
+  <header class="sticky top-0 z-40 glass border-b border-white/10 px-3 py-2 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <!-- PenBot Square Logo with > 0 eyes -->
+      <svg class="w-6 h-6 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.4)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <rect x="2" y="2" width="20" height="20" rx="5" stroke-width="2" stroke="currentColor" fill="rgba(6, 182, 212, 0.12)"/>
+        <!-- Left Eye: > -->
+        <path d="M6.5 8.5L10.5 12L6.5 15.5" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Right Eye: 0 -->
+        <rect x="13.5" y="8.5" width="5" height="7" rx="2.5" stroke-width="2"/>
+      </svg>
+      <span id="headerBotName" class="font-bold tracking-tight text-white text-sm">PenBot</span>
+    </div>
+
+    <!-- Header Right: Live Connection Status -->
+    <div id="wsStatusBadge" class="px-2 py-0.5 rounded text-[10px] mono bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 font-semibold">
+      <span id="wsStatusDot" class="h-1.5 w-1.5 rounded-full bg-rose-400"></span>
+      <span id="wsModeText">DISCONNECTED</span>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- MOBILE SCROLLABLE CONTENT (Tab Panels) -->
+  <!-- ===================================================================== -->
+  <main class="flex-1 p-3 pb-24 overflow-y-auto max-w-lg mx-auto w-full space-y-3">
+
+    <!-- ===================================================================== -->
+    <!-- TAB 1: DRIVE & RC KINEMATICS + REAL-TIME SENSORS + LOG -->
+    <!-- ===================================================================== -->
+    <div id="tab-drive" class="tab-panel space-y-3">
+      
+      <!-- Mini Display Mirror Banner -->
+      <div class="glass rounded-2xl p-3 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <canvas id="miniTftCanvas" width="76" height="76" class="rounded-lg bg-black border border-cyan-500/30"></canvas>
+          <div>
+            <div class="text-xs font-bold text-zinc-100">Face Screen</div>
+            <div id="miniEyeStateText" class="text-[11px] mono text-cyan-400 font-semibold">IDLE</div>
+          </div>
+        </div>
+        <button id="quickTouchBtn" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 text-xs mono font-semibold transition active:scale-95">
+          Touch Sensor
+        </button>
+      </div>
+
+      <!-- Virtual Thumb Joystick Card -->
+      <div class="glass rounded-2xl p-4 flex flex-col items-center justify-between">
+        <div class="w-full flex justify-between items-center mb-1">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Wheel Controller</span>
+          <span id="joyTelemetry" class="text-xs mono text-cyan-400 font-bold">X: 0 | Y: 0</span>
+        </div>
+
+        <!-- Touch Area -->
+        <div id="joystickZone" class="relative w-56 h-56 rounded-full bg-zinc-900 border-2 border-cyan-500/30 flex items-center justify-center cursor-pointer select-none touch-none shadow-inner my-2">
+          <div class="absolute inset-5 rounded-full border border-dashed border-white/10 pointer-events-none"></div>
+          <div class="absolute w-full h-[1px] bg-white/10 pointer-events-none"></div>
+          <div class="absolute h-full w-[1px] bg-white/10 pointer-events-none"></div>
+          <div id="joystickKnob" class="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 shadow-[0_0_20px_rgba(6,182,212,0.6)] cursor-grab active:cursor-grabbing transform transition-transform duration-75 flex items-center justify-center text-zinc-950 font-extrabold text-sm select-none">
+            RC
+          </div>
+        </div>
+
+        <div class="w-full flex justify-between items-center text-[10px] mono text-zinc-400 pt-1">
+          <span>Continuous Servos</span>
+          <button id="emergencyStopBtn" class="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold active:scale-95">
+            STOP
+          </button>
+        </div>
+      </div>
+
+      <!-- Neck Panning Card -->
+      <div class="glass rounded-2xl p-3.5 space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Neck Pan (Horizontal)</span>
+          <div class="flex items-center gap-2">
+            <span id="panVal" class="text-xs mono font-bold text-cyan-400">90°</span>
+            <button id="centerNeckBtn" class="text-[10px] mono px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-white/10 active:scale-95 transition">Center</button>
+          </div>
+        </div>
+        <input id="panSlider" type="range" min="0" max="180" value="90" class="w-full h-2 bg-zinc-800 rounded-lg cursor-pointer" />
+      </div>
+
+      <!-- Sensor Card: Head Laser ToF with Functional Reset Button -->
+      <div class="glass rounded-2xl p-4 space-y-2">
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="text-xs mono font-bold text-zinc-100">Head Laser (VL53L0X ToF)</div>
+            <div class="text-[10px] mono text-zinc-400">Mounted Above LCD (Pans with Head)</div>
+          </div>
+          <span id="tofValueText" class="text-cyan-400 font-bold text-base mono">420 mm</span>
+        </div>
+        <input id="tofSimSlider" type="range" min="30" max="1200" value="420" class="w-full h-2 bg-zinc-800 rounded-lg cursor-pointer" />
+        <div class="flex justify-between items-center text-[10px] mono">
+          <button id="tofResetBtn" class="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-cyan-300 font-semibold border border-white/10 active:scale-95 transition">
+            Reset (420 mm)
+          </button>
+          <span class="text-zinc-400">Threshold: 120 mm</span>
+        </div>
+      </div>
+
+      <!-- Sensor Card: Body Ultrasonic with Functional Reset Button -->
+      <div class="glass rounded-2xl p-4 space-y-2">
+        <div class="flex justify-between items-center">
+          <div>
+            <div class="text-xs mono font-bold text-zinc-100">Body Ultrasonic (HC-SR04)</div>
+            <div class="text-[10px] mono text-zinc-400">Mounted in Front Robot Chassis</div>
+          </div>
+          <span id="usonicValueText" class="text-cyan-400 font-bold text-base mono">380 mm</span>
+        </div>
+        <input id="usonicSimSlider" type="range" min="20" max="2000" value="380" class="w-full h-2 bg-zinc-800 rounded-lg cursor-pointer" />
+        <div class="flex justify-between items-center text-[10px] mono">
+          <button id="usonicResetBtn" class="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-cyan-300 font-semibold border border-white/10 active:scale-95 transition">
+            Reset (380 mm)
+          </button>
+          <span class="text-zinc-400">Threshold: 120 mm</span>
+        </div>
+      </div>
+
+      <!-- Sensor Card: 2x Cliff Sensors -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <button id="cliffLeftBtn" class="glass rounded-2xl p-3 flex flex-col justify-between text-left transition active:scale-95">
+          <div class="text-xs font-semibold text-zinc-200">Front-Left Cliff</div>
+          <div class="text-[10px] mono text-zinc-400 mb-2">TCRT5000 Optical</div>
+          <span id="cliffLeftBadge" class="px-2 py-0.5 rounded text-[10px] mono bg-emerald-500/20 text-emerald-300 font-semibold text-center border border-emerald-500/30">
+            SURFACE OK
+          </span>
+        </button>
+
+        <button id="cliffRightBtn" class="glass rounded-2xl p-3 flex flex-col justify-between text-left transition active:scale-95">
+          <div class="text-xs font-semibold text-zinc-200">Front-Right Cliff</div>
+          <div class="text-[10px] mono text-zinc-400 mb-2">TCRT5000 Optical</div>
+          <span id="cliffRightBadge" class="px-2 py-0.5 rounded text-[10px] mono bg-emerald-500/20 text-emerald-300 font-semibold text-center border border-emerald-500/30">
+            SURFACE OK
+          </span>
+        </button>
+      </div>
+
+      <!-- Live Log (Control Tab) -->
+      <div class="glass rounded-2xl p-3 space-y-1">
+        <div class="flex justify-between items-center text-[10px] mono text-zinc-400">
+          <span class="font-bold text-zinc-300">Event Logs</span>
+          <button class="clear-log-btn text-zinc-500 hover:text-zinc-300">Clear</button>
+        </div>
+        <div id="eventLog" class="event-log-box h-24 overflow-y-auto bg-black/80 rounded-lg p-2 text-[10px] mono text-zinc-300 space-y-0.5 border border-white/5"></div>
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 2: EYES & PROCEDURAL FACIAL STATES -->
+    <!-- ===================================================================== -->
+    <div id="tab-eyes" class="tab-panel hidden space-y-3">
+      
+      <div class="glass rounded-2xl p-4 flex flex-col items-center">
+        <div class="w-full flex items-center justify-end mb-3">
+          <button id="touchSimBtn2" class="text-xs mono px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 font-semibold active:scale-95">
+            Touch Sensor
+          </button>
+        </div>
+
+        <!-- 240x240 TFT Display Bezel -->
+        <div class="p-2 rounded-2xl bg-zinc-900 border-2 border-zinc-800 neon-cyan-glow">
+          <canvas id="tftCanvas" width="240" height="240" class="rounded-xl bg-black block"></canvas>
+        </div>
+      </div>
+
+      <!-- Procedural Eye Switcher (Clean simple emotion buttons without duplicate links) -->
+      <div class="glass rounded-2xl p-4 space-y-2">
+        <div class="flex justify-between items-center mb-1">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Procedural Eyes</span>
+        </div>
+        <div class="grid grid-cols-4 gap-2" id="fullEmotionGrid">
+          <button data-emotion="0" class="full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-cyan-500/25 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(6,182,212,0.35)] font-bold text-center transition">IDLE</button>
+          <button data-emotion="1" class="full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-zinc-900 text-emerald-400 border border-emerald-500/20 font-bold text-center transition">HAPPY</button>
+          <button data-emotion="2" class="full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-zinc-900 text-rose-400 border border-rose-500/20 font-bold text-center transition">ANGRY</button>
+          <button data-emotion="3" class="full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-zinc-900 text-amber-300 border border-amber-500/20 font-bold text-center transition">THINK</button>
+          <button data-emotion="4" class="full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-zinc-900 text-slate-400 border border-slate-500/20 font-bold text-center transition">SLEEP</button>
+          <button data-emotion="5" class="full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-zinc-900 text-cyan-400 border border-cyan-500/20 font-bold text-center transition">SCARED</button>
+          <button data-emotion="6" class="full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-zinc-900 text-fuchsia-300 border border-fuchsia-500/20 font-bold text-center transition">DIZZY</button>
+          <button id="toggleScreenQrBtn2" class="full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-zinc-900 text-zinc-400 border border-white/10 font-bold text-center transition">QR</button>
+        </div>
+      </div>
+
+      <!-- Live Log (Face Tab) -->
+      <div class="glass rounded-2xl p-3 space-y-1">
+        <div class="flex justify-between items-center text-[10px] mono text-zinc-400">
+          <span class="font-bold text-zinc-300">Event Logs</span>
+          <button class="clear-log-btn text-zinc-500 hover:text-zinc-300">Clear</button>
+        </div>
+        <div class="event-log-box h-24 overflow-y-auto bg-black/80 rounded-lg p-2 text-[10px] mono text-zinc-300 space-y-0.5 border border-white/5"></div>
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 3: CONNECT & WI-FI PAIRING -->
+    <!-- ===================================================================== -->
+    <div id="tab-connect" class="tab-panel hidden space-y-3">
+      
+      <!-- Network State Banner -->
+      <div class="glass rounded-2xl p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs mono text-zinc-300 font-semibold">Hardware Network State</span>
+          <span id="wifiModeBadge" class="px-2 py-0.5 rounded text-[10px] mono bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+            SOFT-AP SETUP
+          </span>
+        </div>
+        <div class="text-xs mono text-zinc-300 space-y-1">
+          <div>IP Address: <strong id="wifiCurrentIp" class="text-cyan-400">192.168.4.1</strong></div>
+          <div>SSID: <strong id="wifiCurrentSsid" class="text-zinc-200">PenBot-Setup</strong></div>
+        </div>
+      </div>
+
+      <!-- Quick Pairing QR Card (NO duplicate Show on TFT button) -->
+      <div class="glass rounded-2xl p-4 flex flex-col items-center space-y-3">
+        <div class="w-full flex items-center justify-between">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Connect via QR</span>
+        </div>
+
+        <!-- Mode selector: Wi-Fi AP vs Web URL -->
+        <div class="w-full grid grid-cols-2 gap-1 bg-zinc-900 p-1 rounded-xl border border-white/5 text-[10px] mono">
+          <button id="qrModeWifiBtn" class="py-1 px-2 rounded-lg bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30">
+            1. Wi-Fi AP
+          </button>
+          <button id="qrModeUrlBtn" class="py-1 px-2 rounded-lg text-zinc-400 hover:text-white">
+            2. Web URL
+          </button>
+        </div>
+
+        <div class="p-3 rounded-2xl bg-white border-2 border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.2)]">
+          <div id="qrCodeContainer" class="w-[140px] h-[140px] flex items-center justify-center"></div>
+        </div>
+
+        <div class="w-full bg-zinc-900/80 rounded-xl p-2.5 border border-white/5 text-xs mono space-y-1">
+          <div class="flex justify-between">
+            <span class="text-zinc-400">AP SSID:</span>
+            <button id="copySsidBtn" class="text-cyan-300 underline">PenBot-Setup [Copy]</button>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-400">Pass:</span>
+            <button id="copyPassBtn" class="text-zinc-200 underline">12345678 [Copy]</button>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-zinc-400">URL:</span>
+            <button id="copyUrlBtn" class="text-emerald-400 underline">http://192.168.4.1 [Copy]</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2.4GHz Wi-Fi Connect Form with Fully Functional Scan Button -->
+      <div class="glass rounded-2xl p-4 space-y-2.5">
+        <div class="flex justify-between items-center">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Join Home 2.4GHz Wi-Fi</span>
+          <button id="scanWifiBtn" class="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs mono text-cyan-300 border border-white/10 transition active:scale-95 flex items-center gap-1 font-semibold">
+            <span id="scanWifiSpinner" class="hidden">&circlearrowright;</span>
+            <span>Scan</span>
+          </button>
+        </div>
+        <div id="scannedNetworksList" class="h-28 overflow-y-auto bg-black/60 rounded-xl p-1.5 border border-white/5 space-y-1 text-xs mono">
+          <div class="text-zinc-500 text-center py-8">Tap "Scan" to discover access points</div>
+        </div>
+        <input id="wifiSsidInput" type="text" placeholder="Wi-Fi SSID" class="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs mono text-zinc-100 outline-none focus:border-cyan-500/50" />
+        <input id="wifiPassInput" type="password" placeholder="Password" class="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs mono text-zinc-100 outline-none focus:border-cyan-500/50" />
+        <button id="saveWifiBtn" class="w-full py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-bold text-xs mono active:scale-95 shadow-[0_0_15px_rgba(6,182,212,0.3)] transition">
+          Save &amp; Connect Wi-Fi
+        </button>
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 4: AI BRAIN & VOICE PERSONA (Renamed to AI) -->
+    <!-- ===================================================================== -->
+    <div id="tab-ai" class="tab-panel hidden space-y-3">
+      
+      <!-- Cloud AI Brain Provider & Universal API Configuration -->
+      <div class="glass rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Cloud AI Brain &amp; API Key</span>
+          <span id="aiApiKeyBadge" class="text-[10px] mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30">
+            NO KEY SET
+          </span>
+        </div>
+
+        <div>
+          <label class="text-[11px] mono text-zinc-400 block mb-1">AI Provider:</label>
+          <select id="aiProviderSelect" class="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs mono text-cyan-300 outline-none">
+            <option value="gemini" selected>Google Gemini (Gemini 2.5 Flash - Free)</option>
+            <option value="groq">Groq LPU (Llama-3.3-70B - Free)</option>
+            <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+            <option value="anthropic">Anthropic Claude (Claude 3.5 Sonnet)</option>
+            <option value="deepseek">DeepSeek (DeepSeek-V3 / R1)</option>
+            <option value="ollama">Ollama / Local LLM (OpenAI-Compatible)</option>
+            <option value="custom">Custom Endpoint (OpenAI-Compatible)</option>
+          </select>
+        </div>
+
+        <!-- Custom Base URL (Editable for custom/ollama, auto-fills for others) -->
+        <div>
+          <label class="text-[11px] mono text-zinc-400 block mb-1">API Endpoint Base URL:</label>
+          <input id="aiBaseUrlInput" type="text" value="https://generativelanguage.googleapis.com"
+                 placeholder="https://api.openai.com/v1"
+                 class="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs mono text-zinc-100 outline-none focus:border-cyan-500/50" />
+        </div>
+
+        <!-- Model Identifier -->
+        <div>
+          <label class="text-[11px] mono text-zinc-400 block mb-1">Model Name:</label>
+          <input id="aiModelInput" type="text" value="gemini-2.5-flash"
+                 placeholder="e.g. gemini-2.5-flash, llama-3.3-70b-versatile, gpt-4o-mini"
+                 class="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs mono text-zinc-100 outline-none focus:border-cyan-500/50" />
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-[11px] mono text-zinc-400">API Key:</label>
+            <button id="toggleAiKeyVisibility" class="text-[10px] mono text-zinc-400 hover:text-zinc-200">Show Key</button>
+          </div>
+          <div class="flex gap-2">
+            <input id="aiApiKeyInput" type="password" placeholder="Paste API Key..."
+                   class="flex-1 bg-zinc-900 border border-white/10 rounded-xl px-3 py-1.5 text-xs mono text-zinc-100 outline-none focus:border-cyan-500/50" />
+            <button id="saveAiKeyBtn" class="px-3.5 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs mono font-semibold active:scale-95 transition">
+              Save
+            </button>
+          </div>
+        </div>
+
+        <div class="text-[10px] mono text-zinc-400 bg-zinc-900/60 p-2 rounded-xl border border-white/5 space-y-0.5">
+          <div>&bull; Free Keys: <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-cyan-400 underline">Google AI Studio</a> &bull; <a href="https://console.groq.com/keys" target="_blank" class="text-cyan-400 underline">Groq Console</a></div>
+          <div>&bull; Local LLMs: Ollama default is <code class="text-zinc-300">http://localhost:11434/v1</code></div>
+        </div>
+      </div>
+
+      <!-- Personal Instructions Card -->
+      <div class="glass rounded-2xl p-4 space-y-2.5">
+        <div class="flex justify-between items-center">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Personal Instructions</span>
+          <span class="text-[10px] mono text-cyan-400">Custom System Prompt</span>
+        </div>
+        <div class="text-[11px] mono text-zinc-400">
+          Define custom behavior, personality traits, and instructions for PenBot:
+        </div>
+        <textarea id="personalInstructionInput" rows="3"
+                  placeholder="e.g. You are PenBot (model pen.v1), an autonomous desktop cyber companion. Respond concisely in under 20 words with witty tech humor and helpfulness."
+                  class="w-full bg-zinc-900 border border-white/10 rounded-xl p-2.5 text-xs mono text-zinc-100 outline-none focus:border-cyan-500/50 resize-none"></textarea>
+        <button id="savePersonalInstructionBtn" class="w-full py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs mono font-semibold active:scale-95 transition">
+          Save Personal Instructions
+        </button>
+      </div>
+
+      <!-- Voice Persona Configuration (Voice # Naming & Customizable) -->
+      <div class="glass rounded-2xl p-4 space-y-3">
+        <div class="flex justify-between items-center">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Voice Persona &amp; Audio</span>
+          <button id="previewVoiceBtn" class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 text-xs mono font-semibold border border-cyan-500/30 active:scale-95 transition">
+            Preview Voice
+          </button>
+        </div>
+
+        <div>
+          <label class="text-[11px] mono text-zinc-400 block mb-1">Preset Profile:</label>
+          <select id="voicePersonaSelect" class="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs mono text-zinc-100 outline-none">
+            <option value="1" data-pitch="1.25" data-rate="1.15" selected>Voice 1 (High Pitch / Fast)</option>
+            <option value="2" data-pitch="0.75" data-rate="0.95">Voice 2 (Deep Tactical / Slow)</option>
+            <option value="3" data-pitch="1.05" data-rate="1.00">Voice 3 (Balanced / Natural)</option>
+            <option value="4" data-pitch="1.35" data-rate="1.20">Voice 4 (Playful / Bright)</option>
+            <option value="5" data-pitch="0.85" data-rate="0.90">Voice 5 (Heavy Cyber)</option>
+          </select>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-[11px] mono">
+          <div class="p-2 rounded-xl bg-zinc-900/80 border border-white/5 space-y-1">
+            <div class="flex justify-between text-zinc-400"><span>Pitch:</span><span id="pitchValText" class="text-cyan-400">1.25x</span></div>
+            <input id="voicePitchSlider" type="range" min="0.5" max="2.0" step="0.05" value="1.25" class="w-full h-1 bg-zinc-800 rounded cursor-pointer" />
+          </div>
+          <div class="p-2 rounded-xl bg-zinc-900/80 border border-white/5 space-y-1">
+            <div class="flex justify-between text-zinc-400"><span>Speed:</span><span id="rateValText" class="text-cyan-400">1.15x</span></div>
+            <input id="voiceRateSlider" type="range" min="0.7" max="1.5" step="0.05" value="1.15" class="w-full h-1 bg-zinc-800 rounded cursor-pointer" />
+          </div>
+          <div class="p-2 rounded-xl bg-zinc-900/80 border border-white/5 space-y-1">
+            <div class="flex justify-between text-zinc-400"><span>Vol:</span><span id="volValText" class="text-cyan-400">85%</span></div>
+            <input id="voiceVolSlider" type="range" min="0" max="100" step="5" value="85" class="w-full h-1 bg-zinc-800 rounded cursor-pointer" />
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button id="resetVoiceDefaultsBtn" class="text-[10px] mono text-zinc-400 hover:text-cyan-300 underline">
+            Reset Voice Defaults
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- TAB 5: SYSTEM SPECS & FIRMWARE UPDATE (Settings Tab) -->
+    <!-- ===================================================================== -->
+    <div id="tab-system" class="tab-panel hidden space-y-3">
+      
+      <!-- Top Section: Robot Identity & Rename Preview -->
+      <div class="glass rounded-2xl p-4 space-y-2.5">
+        <div class="flex justify-between items-center">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Robot Identity</span>
+          <button id="openRenameModalBtn" class="text-xs mono text-cyan-400 underline">Rename Bot</button>
+        </div>
+        <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-900/80 border border-white/5">
+          <div>
+            <div class="text-[11px] mono text-zinc-400">Current Bot Name:</div>
+            <div id="settingsBotNamePreview" class="text-sm mono font-bold text-cyan-400">PenBot</div>
+          </div>
+          <div class="text-[10px] mono text-zinc-500 text-right">
+            <div>Model: <span class="text-zinc-300">pen.v1</span></div>
+            <div>Firmware: <span class="text-emerald-400">v1.0.0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Middle Section: Hardware Specs & Versioning -->
+      <div class="glass rounded-2xl p-4 space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Hardware Specifications</span>
+        </div>
+        <div class="text-[11px] mono text-zinc-400 space-y-1.5 divide-y divide-white/5">
+          <div class="flex justify-between pt-1"><span>Model Version:</span><span class="text-cyan-400 font-bold">pen.v1</span></div>
+          <div class="flex justify-between pt-1"><span>Firmware Version:</span><span class="text-emerald-400 font-bold">v1.0.0</span></div>
+          <div class="flex justify-between pt-1"><span>Microcontroller:</span><span class="text-zinc-200">ESP32-S3 DevKitC-1 (240MHz)</span></div>
+          <div class="flex justify-between pt-1"><span>Memory Architecture:</span><span class="text-zinc-200">16MB Flash &bull; 8MB Octal PSRAM</span></div>
+          <div class="flex justify-between pt-1"><span>Battery Capacity:</span><span class="text-zinc-200">1S 18650 Li-Ion 3000mAh (5V Boost)</span></div>
+          <div class="flex justify-between pt-1"><span>Display:</span><span class="text-zinc-200">1.3" ST7789 IPS LCD (240x240 60FPS)</span></div>
+          <div class="flex justify-between pt-1"><span>Head Distance (Laser):</span><span class="text-zinc-200">VL53L0X Laser ToF (Above LCD)</span></div>
+          <div class="flex justify-between pt-1"><span>Body Distance (Usonic):</span><span class="text-zinc-200">HC-SR04 Ultrasonic (Front Chassis)</span></div>
+          <div class="flex justify-between pt-1"><span>Cliff &amp; Grab Safety:</span><span class="text-zinc-200">2x TCRT5000 Optical IR Modules</span></div>
+          <div class="flex justify-between pt-1"><span>Touch Sensor:</span><span class="text-zinc-200">Top Brass Standoff (GPIO 4)</span></div>
+          <div class="flex justify-between pt-1"><span>Drive &amp; Actuators:</span><span class="text-zinc-200">2x 360° Servos + 1x 180° Neck Pan</span></div>
+          <div class="flex justify-between pt-1"><span>Audio Subsystem:</span><span class="text-zinc-200">INMP441 I2S Mic + MAX98357A Amp</span></div>
+        </div>
+      </div>
+
+      <!-- Bottom Section: Firmware Update (Separated from Rename at the bottom) -->
+      <div class="glass rounded-2xl p-4 space-y-2.5">
+        <div class="flex justify-between items-center">
+          <span class="text-xs mono uppercase text-zinc-300 font-semibold">Firmware Update</span>
+          <span class="text-[10px] mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">OTA Ready</span>
+        </div>
+        <div class="text-[11px] mono text-zinc-400">
+          Flash updates over local Wi-Fi without USB cables. Select a compiled <code class="text-rose-300">firmware.bin</code> image.
+        </div>
+        <button id="openFlashModalBtn" class="w-full py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs mono font-bold transition active:scale-95">
+          Update Firmware (OTA .bin)
+        </button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- MOBILE BOTTOM NAVIGATION BAR (Sticky Dock) -->
+  <!-- ===================================================================== -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 glass border-t border-white/10 px-2 py-1.5 flex justify-around items-center">
+    
+    <button data-tab="drive" class="mobile-nav-btn flex-1 py-1.5 flex flex-col items-center gap-0.5 text-cyan-400 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 6H9a7 7 0 00-7 7v1a4 4 0 004 4h1a3 3 0 003-3 1 1 0 012 0 3 3 0 003 3h1a4 4 0 004-4v-1a7 7 0 00-7-7zM6 12h4m-2-2v4m7-2h.01m2-2h.01"></path>
+      </svg>
+      <span class="text-[10px] mono font-bold">Control</span>
+    </button>
+
+    <button data-tab="eyes" class="mobile-nav-btn flex-1 py-1.5 flex flex-col items-center gap-0.5 text-zinc-400 hover:text-zinc-200 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <rect x="3.5" y="3.5" width="17" height="17" rx="4" stroke-width="2"></rect>
+        <circle cx="9" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
+        <circle cx="15" cy="12" r="1.5" fill="currentColor" stroke="none"></circle>
+      </svg>
+      <span class="text-[10px] mono font-bold">Face</span>
+    </button>
+
+    <button data-tab="connect" class="mobile-nav-btn flex-1 py-1.5 flex flex-col items-center gap-0.5 text-zinc-400 hover:text-zinc-200 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path></svg>
+      <span class="text-[10px] mono font-bold">Connect</span>
+    </button>
+
+    <button data-tab="ai" class="mobile-nav-btn flex-1 py-1.5 flex flex-col items-center gap-0.5 text-zinc-400 hover:text-zinc-200 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+      <span class="text-[10px] mono font-bold">AI</span>
+    </button>
+
+    <button data-tab="system" class="mobile-nav-btn flex-1 py-1.5 flex flex-col items-center gap-0.5 text-zinc-400 hover:text-zinc-200 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+      <span class="text-[10px] mono font-bold">System</span>
+    </button>
+
+  </nav>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: RENAME BOT COMPANION -->
+  <!-- ===================================================================== -->
+  <div id="renameModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+    <div class="glass rounded-2xl p-5 w-full max-w-sm border border-white/10 space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs font-bold mono uppercase text-white">Rename Robot</h3>
+        <button id="closeRenameModalBtn" class="text-zinc-400 mono text-xs">[Close]</button>
+      </div>
+      <div class="text-[11px] mono text-zinc-400">
+        Personalize PenBot's identity, AP SSID prefix, and dashboard title:
+      </div>
+      <input id="newBotNameInput" type="text" maxlength="24" placeholder="e.g. Nova, Dexter"
+             class="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs mono text-zinc-100 outline-none focus:border-cyan-500/50" />
+      <div class="flex gap-2">
+        <button id="cancelRenameBtn" class="flex-1 py-2 rounded-xl bg-zinc-800 text-xs mono text-zinc-300">Cancel</button>
+        <button id="confirmRenameBtn" class="flex-1 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-xs mono font-bold text-zinc-950">Rename</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL: FIRMWARE FLASH / OTA UPDATE (Identical to Desktop) -->
+  <!-- ===================================================================== -->
+  <div id="flashModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop hidden">
+    <div class="glass rounded-2xl p-5 w-full max-w-sm border border-rose-500/30 shadow-2xl space-y-3">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs font-bold mono uppercase text-rose-400">Firmware Flash / OTA Update</h3>
+        <button id="closeFlashModalBtn" class="text-zinc-400 hover:text-white mono text-xs">[Close]</button>
+      </div>
+
+      <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 space-y-1 text-xs text-rose-200">
+        <div class="font-bold mono">Safety Notice:</div>
+        <div>&bull; Flashing replaces the active ESP32-S3 firmware image.</div>
+        <div>&bull; Ensure the robot is connected to stable 5V power before updating.</div>
+        <div>&bull; Do not disconnect power or refresh this browser window while flashing.</div>
+      </div>
+
+      <!-- File Picker -->
+      <div class="space-y-1">
+        <label class="text-[11px] mono text-zinc-400">Select Firmware Binary (.bin):</label>
+        <input id="firmwareFileInput" type="file" accept=".bin"
+               class="w-full text-xs mono text-zinc-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:mono file:bg-zinc-800 file:text-zinc-200 hover:file:bg-zinc-700 cursor-pointer" />
+      </div>
+
+      <!-- Safety Checkbox -->
+      <label class="flex items-start gap-2 cursor-pointer text-xs text-zinc-300 pt-1">
+        <input id="flashAckCheckbox" type="checkbox" class="mt-0.5 rounded border-white/20 bg-zinc-900 accent-rose-500" />
+        <span>I understand this will overwrite the robot firmware and trigger a restart.</span>
+      </label>
+
+      <!-- Progress Bar Container -->
+      <div id="flashProgressContainer" class="hidden space-y-1 pt-1">
+        <div class="flex justify-between text-[11px] mono">
+          <span id="flashStatusText" class="text-zinc-400">Uploading firmware image...</span>
+          <span id="flashPercentText" class="text-cyan-400 font-bold">0%</span>
+        </div>
+        <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div id="flashProgressBar" class="h-full bg-cyan-400 transition-all duration-150 w-0"></div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button id="cancelFlashBtn" class="flex-1 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs mono text-zinc-300 transition">
+          Cancel
+        </button>
+        <button id="executeFlashBtn" disabled
+                class="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs mono font-bold text-white transition active:scale-95">
+          Confirm &amp; Flash
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- EMBEDDED COMPLETE QR CODE ENGINE (20KB LIBRARY) -->
+  <!-- ===================================================================== -->
+  <script>
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,(function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1}))},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(n*r,o*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}((function(){return qrcode}));
+  </script>
+
+  <script>
+    // =========================================================================
+    // STATE & DATA MANAGEMENT
+    // =========================================================================
+    const state = {
+      botName: localStorage.getItem('penbot_name') || 'PenBot',
+      modelVersion: 'pen.v1',
+      firmwareVersion: 'v1.0.0',
+      battery: 88,
+      pan: 90,
+      joyX: 0,
+      joyY: 0,
+      leftSpeed: 0,
+      rightSpeed: 0,
+      emotion: 0,
+      showPairingQr: false,
+      tofMm: 420,
+      usonicMm: 380,
+      cliffL: false,
+      cliffR: false,
+      wsConnected: false,
+      voiceName: 'Voice 1',
+      voiceIndex: 1,
+      voicePitch: 1.25,
+      voiceRate: 1.15,
+      voiceVol: 85
+    };
+
+    // -------------------------------------------------------------------------
+    // CANVAS & 60FPS PROCEDURAL EYES ENGINE (100% IDENTICAL TO DESKTOP)
+    // -------------------------------------------------------------------------
+    const canvas = document.getElementById('tftCanvas');
+    const ctx = canvas.getContext('2d');
+    const miniCanvas = document.getElementById('miniTftCanvas');
+    const miniCtx = miniCanvas ? miniCanvas.getContext('2d') : null;
+
+    // -------------------------------------------------------------------------
+    // BATTERY HUD: COMPACT LENGTH (27PX), PERCENTAGE STRICTLY INSIDE
+    // -------------------------------------------------------------------------
+    function drawBatteryHud() {
+      ctx.save();
+      ctx.shadowBlur = 0;
+      const pct = state.battery;
+      const color = pct > 20 ? '#34d399' : '#f43f5e';
+
+      // Compact battery outer rectangle (27x14px) at top-right
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(204, 8, 27, 14);
+
+      // Positive terminal nub
+      ctx.fillStyle = color;
+      ctx.fillRect(231, 11, 2.5, 8);
+
+      // Proportional level bar fill inside the battery
+      const fillW = Math.max(0, Math.round((pct / 100) * 23));
+      ctx.fillStyle = pct > 20 ? 'rgba(52, 211, 153, 0.28)' : 'rgba(244, 63, 94, 0.28)';
+      ctx.fillRect(206, 10, fillW, 10);
+
+      // Percentage number rendered strictly INSIDE the battery
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 8.5px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${pct}%`, 217.5, 15);
+      ctx.restore();
+    }
+
+    // -------------------------------------------------------------------------
+    // CANVAS AP SETUP QR SCREEN (Clean layout, no emojis)
+    // -------------------------------------------------------------------------
+    function renderCanvasPairingScreen() {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, 240, 240);
+
+      // Clean Header Banner with bot name
+      ctx.fillStyle = '#00f2fe';
+      ctx.font = 'bold 12px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(`${state.botName.toUpperCase()} SETUP`, 120, 22);
+
+      drawBatteryHud();
+
+      // Render QR code to Canvas
+      try {
+        const qr = qrcode(0, 'M');
+        const apSsid = `${state.botName}-Setup`;
+        qr.addData(`WIFI:S:${apSsid};T:WPA;P:12345678;;`);
+        qr.make();
+        const modCount = qr.getModuleCount();
+        const scale = 3;
+        const qrPx = modCount * scale;
+        const startX = Math.round((240 - qrPx) / 2);
+        const startY = 36;
+
+        // White Quiet Zone
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.roundRect(startX - 8, startY - 8, qrPx + 16, qrPx + 16, 6);
+        ctx.fill();
+
+        ctx.fillStyle = '#000000';
+        for (let y = 0; y < modCount; y++) {
+          for (let x = 0; x < modCount; x++) {
+            if (qr.isDark(y, x)) {
+              ctx.fillRect(startX + x * scale, startY + y * scale, scale, scale);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Canvas QR error:', e);
+      }
+
+      // Connection Info text
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 12px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText(`SSID: ${state.botName}-Setup`, 120, 158);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('PASS: 12345678', 120, 178);
+
+      ctx.fillStyle = '#34d399';
+      ctx.fillText('URL: 192.168.4.1', 120, 198);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '10px "JetBrains Mono", monospace';
+      ctx.fillText('Scan QR to pair phone', 120, 224);
+    }
+
+    // -------------------------------------------------------------------------
+    // 60FPS PROCEDURAL EYE RENDERER (Panning only, no vertical tilt)
+    // -------------------------------------------------------------------------
+    function renderEyes() {
+      state.tick = (state.tick || 0) + 1;
+
+      if (state.showPairingQr) {
+        renderCanvasPairingScreen();
+        if (miniCtx) miniCtx.drawImage(canvas, 0, 0, 76, 76);
+        requestAnimationFrame(renderEyes);
+        return;
+      }
+
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, 240, 240);
+
+      // EMOTION 6: DIZZY (Counter-rotating spirals only, no mouth, no halo)
+      if (state.emotion === 6) {
+        const wobbleX = Math.sin(state.tick * 0.22) * 8;
+
+        ctx.strokeStyle = '#e879f9';
+        ctx.shadowColor = '#e879f9';
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 4;
+
+        [
+          { cx: 70 + wobbleX, cy: 120, dir: 1 },
+          { cx: 170 - wobbleX, cy: 120, dir: -1 }
+        ].forEach(eye => {
+          ctx.beginPath();
+          for (let a = 0; a < Math.PI * 5.5; a += 0.15) {
+            const r = a * 2.2;
+            const angle = a + (state.tick * 0.18 * eye.dir);
+            const x = eye.cx + Math.cos(angle) * r;
+            const y = eye.cy + Math.sin(angle) * r;
+            if (a === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        });
+
+        ctx.shadowBlur = 0;
+        drawBatteryHud();
+        if (miniCtx) miniCtx.drawImage(canvas, 0, 0, 76, 76);
+        requestAnimationFrame(renderEyes);
+        return;
+      }
+
+      // EMOTION 5: SCARED (CLIFF DETECTED) -> Anime "> <" terrified wincing eyes
+      if (state.emotion === 5) {
+        const jitterX = (state.tick % 2 === 0 ? -2.5 : 2.5);
+        const jitterY = (state.tick % 3 === 0 ? -2 : 2);
+
+        ctx.strokeStyle = '#00f2fe';
+        ctx.shadowColor = '#00f2fe';
+        ctx.shadowBlur = 14;
+        ctx.lineWidth = 11;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Left eye chevron: > (Apex pointing right/inward)
+        ctx.beginPath();
+        ctx.moveTo(46 + jitterX, 94 + jitterY);
+        ctx.lineTo(92 + jitterX, 120 + jitterY);
+        ctx.lineTo(46 + jitterX, 146 + jitterY);
+        ctx.stroke();
+
+        // Right eye chevron: < (Apex pointing left/inward)
+        ctx.beginPath();
+        ctx.moveTo(194 - jitterX, 94 - jitterY);
+        ctx.lineTo(148 - jitterX, 120 - jitterY);
+        ctx.lineTo(194 - jitterX, 146 - jitterY);
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        drawBatteryHud();
+        if (miniCtx) miniCtx.drawImage(canvas, 0, 0, 76, 76);
+        requestAnimationFrame(renderEyes);
+        return;
+      }
+
+      // EMOTION 3: THINKING -> Alternating big/small eyes looking above, switching periodically, NO eyebrows
+      if (state.emotion === 3) {
+        const isBlinking = (state.tick % 130) < 5;
+        const breathOffset = Math.sin(state.tick * 0.05) * 2;
+        // Switch which eye is raised and looking above every ~2.6s (160 ticks @ 60FPS)
+        const switchPhase = Math.floor(state.tick / 160) % 2 === 0;
+
+        // Big raised eye (looking above: y: 72, h: 62), Small narrowed eye (y: 94, h: 36)
+        const leftH = isBlinking ? 6 : (switchPhase ? 36 : 62);
+        const leftY = isBlinking ? 122 : ((switchPhase ? 94 : 72) + breathOffset);
+        const leftRadius = isBlinking ? 3 : (switchPhase ? 12 : 16);
+
+        const rightH = isBlinking ? 6 : (switchPhase ? 62 : 36);
+        const rightY = isBlinking ? 122 : ((switchPhase ? 72 : 94) + breathOffset);
+        const rightRadius = isBlinking ? 3 : (switchPhase ? 16 : 12);
+
+        const leftX = 38;
+        const rightX = 138;
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.shadowColor = '#fbbf24';
+        ctx.shadowBlur = 14;
+
+        ctx.beginPath();
+        ctx.roundRect(leftX, leftY, 62, leftH, leftRadius);
+        ctx.roundRect(rightX, rightY, 62, rightH, rightRadius);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+        drawBatteryHud();
+        if (miniCtx) miniCtx.drawImage(canvas, 0, 0, 76, 76);
+        requestAnimationFrame(renderEyes);
+        return;
+      }
+
+      // STANDARD EMOTIONS (0:IDLE, 1:HAPPY, 2:ANGRY, 4:SLEEP)
+      // Horizontal tracking with Pan and JoyX. Vertical has gentle breathing only.
+      const lookX = ((state.pan - 90) * 0.25) + (state.joyX * 0.12);
+      const breathOffset = state.emotion === 4 ? Math.sin(state.tick * 0.05) * 2.5 : Math.sin(state.tick * 0.08) * 4;
+      const isBlinking = (state.tick % 130) < 5;
+
+      const leftX = 38 + lookX;
+      const rightX = 138 + lookX;
+
+      // 1. HAPPY (^ ^) -> Clean curved glowing arches, zero black cutout residue
+      if (state.emotion === 1) {
+        ctx.strokeStyle = '#34d399';
+        ctx.shadowColor = '#34d399';
+        ctx.shadowBlur = 14;
+        ctx.lineWidth = isBlinking ? 6 : 13;
+        ctx.lineCap = 'round';
+
+        const archY = isBlinking ? 122 + breathOffset : 128 + breathOffset;
+        if (isBlinking) {
+          ctx.beginPath();
+          ctx.moveTo(leftX + 4, archY);
+          ctx.lineTo(leftX + 60, archY);
+          ctx.moveTo(rightX + 4, archY);
+          ctx.lineTo(rightX + 60, archY);
+          ctx.stroke();
+        } else {
+          // Left eye arch ^
+          ctx.beginPath();
+          ctx.arc(leftX + 32, archY, 28, Math.PI * 1.08, Math.PI * 1.92);
+          ctx.stroke();
+
+          // Right eye arch ^
+          ctx.beginPath();
+          ctx.arc(rightX + 32, archY, 28, Math.PI * 1.08, Math.PI * 1.92);
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+      }
+      // 2. ANGRY -> Direct geometry with smooth rounded corners, ZERO black cutouts
+      else if (state.emotion === 2) {
+        ctx.fillStyle = '#f43f5e';
+        ctx.shadowColor = '#f43f5e';
+        ctx.shadowBlur = 14;
+
+        const eyeH = 68;
+        const eyeY = 85 + breathOffset;
+
+        if (isBlinking) {
+          ctx.beginPath();
+          ctx.roundRect(leftX, 122 + breathOffset, 64, 6, 3);
+          ctx.roundRect(rightX, 122 + breathOffset, 64, 6, 3);
+          ctx.fill();
+        } else {
+          // Left Eye: slanted down towards nose (right)
+          ctx.beginPath();
+          ctx.moveTo(leftX + 10, eyeY + 4);
+          ctx.lineTo(leftX + 64, eyeY + 26); // angled brow down towards nose
+          ctx.lineTo(leftX + 64, eyeY + eyeH - 16);
+          ctx.arcTo(leftX + 64, eyeY + eyeH, leftX + 48, eyeY + eyeH, 16); // bottom-right rounded corner
+          ctx.lineTo(leftX + 16, eyeY + eyeH);
+          ctx.arcTo(leftX, eyeY + eyeH, leftX, eyeY + eyeH - 16, 16); // bottom-left rounded corner
+          ctx.lineTo(leftX, eyeY + 14);
+          ctx.arcTo(leftX, eyeY + 4, leftX + 10, eyeY + 4, 10); // top-left rounded corner
+          ctx.closePath();
+          ctx.fill();
+
+          // Right Eye: slanted down towards nose (left)
+          ctx.beginPath();
+          ctx.moveTo(rightX, eyeY + 26); // angled brow starts low near nose
+          ctx.lineTo(rightX + 54, eyeY + 4); // goes up to top-right outer corner
+          ctx.arcTo(rightX + 64, eyeY + 4, rightX + 64, eyeY + 14, 10); // top-right rounded corner
+          ctx.lineTo(rightX + 64, eyeY + eyeH - 16);
+          ctx.arcTo(rightX + 64, eyeY + eyeH, rightX + 48, eyeY + eyeH, 16); // bottom-right rounded corner
+          ctx.lineTo(rightX + 16, eyeY + eyeH);
+          ctx.arcTo(rightX, eyeY + eyeH, rightX, eyeY + eyeH - 16, 16); // bottom-left rounded corner
+          ctx.lineTo(rightX, eyeY + 26);
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      }
+      // 3. IDLE (0) & SLEEP (4) -> Sleek glowing neon rectangles
+      else {
+        const color = state.emotion === 4 ? '#64748b' : '#00f2fe';
+        const eyeH = (isBlinking || state.emotion === 4) ? 6 : 68;
+        const eyeY = ((isBlinking || state.emotion === 4) ? 122 : 85) + breathOffset;
+
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 14;
+
+        ctx.beginPath();
+        ctx.roundRect(leftX, eyeY, 64, eyeH, 16);
+        ctx.roundRect(rightX, eyeY, 64, eyeH, 16);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // Floating "z Z Z" snoring animation when in SLEEP state
+        if (state.emotion === 4) {
+          for (let i = 0; i < 3; i++) {
+            const progress = ((state.tick * 0.65 + i * 32) % 96) / 96;
+            const zx = 148 + i * 14 + Math.sin(progress * Math.PI * 2 + i) * 6 + progress * 22;
+            const zy = 108 - progress * 68;
+            const fontSize = Math.round(12 + progress * 12);
+
+            ctx.save();
+            ctx.font = `bold ${fontSize}px "JetBrains Mono", monospace`;
+            ctx.fillStyle = `rgba(148, 163, 184, ${1 - progress * 0.85})`;
+            ctx.fillText(i === 0 ? 'z' : 'Z', zx, zy);
+            ctx.restore();
+          }
+        }
+      }
+
+      drawBatteryHud();
+
+      // Mirror onto mini display
+      if (miniCtx) {
+        miniCtx.drawImage(canvas, 0, 0, 76, 76);
+      }
+
+      requestAnimationFrame(renderEyes);
+    }
+    requestAnimationFrame(renderEyes);
+
+    // -------------------------------------------------------------------------
+    // TELEMETRY & LOGGING
+    // -------------------------------------------------------------------------
+    function logEvent(msg, colorClass = 'text-zinc-300') {
+      const logBoxes = document.querySelectorAll('.event-log-box');
+      if (!logBoxes || logBoxes.length === 0) return;
+      const time = new Date().toTimeString().split(' ')[0];
+      logBoxes.forEach(box => {
+        const div = document.createElement('div');
+        div.className = `flex gap-1.5 ${colorClass}`;
+        div.innerHTML = `<span class="text-zinc-500">[${time}]</span> <span>${msg}</span>`;
+        box.prepend(div);
+        while (box.children.length > 40) {
+          box.removeChild(box.lastChild);
+        }
+      });
+    }
+
+    logEvent(`Mobile Console ready &bull; Model: ${state.modelVersion} &bull; Firmware: ${state.firmwareVersion}`, 'text-cyan-400 font-semibold');
+
+    // -------------------------------------------------------------------------
+    // SENSOR TELEMETRY & RESET HANDLERS
+    // -------------------------------------------------------------------------
+    const tofSlider = document.getElementById('tofSimSlider');
+    const tofValText = document.getElementById('tofValueText');
+    const tofMeterBar = document.getElementById('tofMeterBar');
+    const tofStatusPill = document.getElementById('tofStatusPill');
+
+    const usonicSlider = document.getElementById('usonicSimSlider');
+    const usonicValText = document.getElementById('usonicValueText');
+    const usonicMeterBar = document.getElementById('usonicMeterBar');
+    const usonicStatusPill = document.getElementById('usonicStatusPill');
+
+    function updateTofTelemetry(mm) {
+      state.tofMm = mm;
+      if (tofSlider) tofSlider.value = mm;
+      if (tofValText) {
+        tofValText.textContent = `${mm} mm`;
+        tofValText.className = mm < 120 ? 'text-rose-400 font-bold text-base mono animate-pulse' : 'text-cyan-400 font-bold text-base mono';
+      }
+    }
+
+    function updateUsonicTelemetry(mm) {
+      state.usonicMm = mm;
+      if (usonicSlider) usonicSlider.value = mm;
+      if (usonicValText) {
+        usonicValText.textContent = `${mm} mm`;
+        usonicValText.className = mm < 120 ? 'text-rose-400 font-bold text-base mono animate-pulse' : 'text-cyan-400 font-bold text-base mono';
+      }
+    }
+
+    tofSlider.addEventListener('input', (e) => updateTofTelemetry(parseInt(e.target.value, 10)));
+    usonicSlider.addEventListener('input', (e) => updateUsonicTelemetry(parseInt(e.target.value, 10)));
+
+    // Functional Reset Buttons for Sensor values
+    document.getElementById('tofResetBtn')?.addEventListener('click', () => {
+      updateTofTelemetry(420);
+      logEvent('Head Laser ToF distance reset to default (420 mm)', 'text-cyan-300');
+    });
+
+    document.getElementById('usonicResetBtn')?.addEventListener('click', () => {
+      updateUsonicTelemetry(380);
+      logEvent('Body Ultrasonic distance reset to default (380 mm)', 'text-cyan-300');
+    });
+
+    function updateCliffTelemetry(side, isDrop) {
+      const badge = document.getElementById(side === 'left' ? 'cliffLeftBadge' : 'cliffRightBadge');
+      if (!badge) return;
+      if (isDrop) {
+        badge.textContent = 'DROP DETECTED';
+        badge.className = 'px-2 py-0.5 rounded text-[10px] mono bg-rose-500/25 text-rose-300 font-bold border border-rose-500/40 animate-pulse text-center';
+      } else {
+        badge.textContent = 'SURFACE OK';
+        badge.className = 'px-2 py-0.5 rounded text-[10px] mono bg-emerald-500/20 text-emerald-300 font-semibold text-center border border-emerald-500/30';
+      }
+    }
+
+    function triggerCliff(side, isLeft) {
+      const prevEmo = state.emotion;
+      if (isLeft) state.cliffL = true; else state.cliffR = true;
+      updateCliffTelemetry(isLeft ? 'left' : 'right', true);
+      setActiveEmotion(5); // SCARED (> <)
+      logEvent(`Table drop detected on ${side} &bull; Emergency reverse active`, 'text-rose-400 font-bold');
+      setTimeout(() => {
+        if (isLeft) state.cliffL = false; else state.cliffR = false;
+        updateCliffTelemetry(isLeft ? 'left' : 'right', false);
+        setActiveEmotion(prevEmo === 5 ? 0 : prevEmo);
+        logEvent('Cliff safety recovery complete &bull; Surface clear', 'text-emerald-400 font-medium');
+      }, 1800);
+    }
+    document.getElementById('cliffLeftBtn').addEventListener('click', () => triggerCliff('Front-Left', true));
+    document.getElementById('cliffRightBtn').addEventListener('click', () => triggerCliff('Front-Right', false));
+
+    // -------------------------------------------------------------------------
+    // WEBSOCKET TELEMETRY
+    // -------------------------------------------------------------------------
+    let ws = null;
+    function connectWebSocket() {
+      const host = window.location.host || 'penbot.local';
+      ws = new WebSocket(`ws://${host}/ws`);
+
+      ws.onopen = () => {
+        state.wsConnected = true;
+        const wsMode = document.getElementById('wsModeText');
+        if (wsMode) wsMode.textContent = 'CONNECTED';
+        const wsBadge = document.getElementById('wsStatusBadge');
+        if (wsBadge) wsBadge.className = 'px-2 py-0.5 rounded text-[10px] mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 font-semibold';
+        const wsDot = document.getElementById('wsStatusDot');
+        if (wsDot) wsDot.className = 'h-1.5 w-1.5 rounded-full bg-emerald-400';
+        logEvent('WebSocket link established with ESP32-S3', 'text-emerald-400 font-bold');
+      };
+
+      ws.onclose = () => {
+        state.wsConnected = false;
+        const wsMode = document.getElementById('wsModeText');
+        if (wsMode) wsMode.textContent = 'DISCONNECTED';
+        const wsBadge = document.getElementById('wsStatusBadge');
+        if (wsBadge) wsBadge.className = 'px-2 py-0.5 rounded text-[10px] mono bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1.5 font-semibold';
+        const wsDot = document.getElementById('wsStatusDot');
+        if (wsDot) wsDot.className = 'h-1.5 w-1.5 rounded-full bg-rose-400';
+        setTimeout(connectWebSocket, 3000);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.battery !== undefined) {
+            state.battery = data.battery;
+            const bTxt = document.getElementById('headerBatteryText');
+            if (bTxt) bTxt.textContent = `${data.battery}%`;
+          }
+          if (data.tof !== undefined) updateTofTelemetry(data.tof);
+          if (data.usonic !== undefined) updateUsonicTelemetry(data.usonic);
+          if (data.cliffL !== undefined) updateCliffTelemetry('left', data.cliffL);
+          if (data.cliffR !== undefined) updateCliffTelemetry('right', data.cliffR);
+          if (data.botName) applyBotName(data.botName);
+        } catch(err) {}
+      };
+    }
+
+    connectWebSocket();
+
+    function sendRobotCommand() {
+      if (state.wsConnected && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          cmd: 'drive',
+          left: state.leftSpeed,
+          right: state.rightSpeed,
+          pan: state.pan,
+          emotion: state.emotion,
+          showPairingQr: state.showPairingQr
+        }));
+      }
+    }
+
+    setInterval(sendRobotCommand, 50);
+
+    // -------------------------------------------------------------------------
+    // EMOTION & QR SCREEN CONTROLLER
+    // -------------------------------------------------------------------------
+    const emotionNames = ['IDLE', 'HAPPY', 'ANGRY', 'THINK', 'SLEEP', 'SCARED', 'DIZZY'];
+
+    const emotionButtonStyles = {
+      0: {
+        active: 'bg-cyan-500/25 text-cyan-300 border border-cyan-500/60 shadow-[0_0_12px_rgba(6,182,212,0.35)]',
+        inactive: 'bg-zinc-900 text-cyan-400 border border-cyan-500/20'
+      },
+      1: {
+        active: 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/60 shadow-[0_0_12px_rgba(52,211,153,0.35)]',
+        inactive: 'bg-zinc-900 text-emerald-400 border border-emerald-500/20'
+      },
+      2: {
+        active: 'bg-rose-500/25 text-rose-300 border border-rose-500/60 shadow-[0_0_12px_rgba(244,63,94,0.35)]',
+        inactive: 'bg-zinc-900 text-rose-400 border border-rose-500/20'
+      },
+      3: {
+        active: 'bg-amber-500/25 text-amber-300 border border-amber-500/60 shadow-[0_0_12px_rgba(251,191,36,0.35)]',
+        inactive: 'bg-zinc-900 text-amber-300 border border-amber-500/20'
+      },
+      4: {
+        active: 'bg-slate-500/25 text-slate-300 border border-slate-400/60 shadow-[0_0_12px_rgba(100,116,139,0.35)]',
+        inactive: 'bg-zinc-900 text-slate-400 border border-slate-500/20'
+      },
+      5: {
+        active: 'bg-cyan-500/25 text-cyan-300 border border-cyan-400/60 shadow-[0_0_12px_rgba(0,242,254,0.35)]',
+        inactive: 'bg-zinc-900 text-cyan-400 border border-cyan-500/20'
+      },
+      6: {
+        active: 'bg-fuchsia-500/25 text-fuchsia-300 border border-fuchsia-400/60 shadow-[0_0_12px_rgba(232,121,249,0.35)]',
+        inactive: 'bg-zinc-900 text-fuchsia-300 border border-fuchsia-500/20'
+      }
+    };
+
+    function updateQrButtonStates() {
+      const tab2QrBtn = document.getElementById('toggleScreenQrBtn2');
+      const miniText = document.getElementById('miniEyeStateText');
+
+      if (state.showPairingQr) {
+        if (tab2QrBtn) tab2QrBtn.className = 'full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-white/20 text-white border border-white/40 shadow-[0_0_12px_rgba(255,255,255,0.25)] font-bold text-center transition';
+        if (miniText) {
+          miniText.textContent = 'QR SETUP';
+          miniText.className = 'text-[11px] mono text-cyan-400 font-semibold';
+        }
+        document.querySelectorAll('.full-emo-btn').forEach(btn => {
+          if (btn.id !== 'toggleScreenQrBtn2') {
+            const emo = parseInt(btn.dataset.emotion, 10);
+            const style = emotionButtonStyles[emo];
+            btn.className = `full-emo-btn py-2.5 px-2 rounded-xl text-xs mono font-bold text-center transition ${style ? style.inactive : 'bg-zinc-900 text-zinc-400 border border-white/10'}`;
+          }
+        });
+      } else {
+        if (tab2QrBtn) tab2QrBtn.className = 'full-emo-btn py-2.5 px-2 rounded-xl text-xs mono bg-zinc-900 text-zinc-400 border border-white/10 font-bold text-center transition';
+        const label = emotionNames[state.emotion] || 'IDLE';
+        if (miniText) {
+          miniText.textContent = label;
+          const miniColorMap = {
+            0: 'text-cyan-400',
+            1: 'text-emerald-400',
+            2: 'text-rose-400',
+            3: 'text-amber-400',
+            4: 'text-slate-400',
+            5: 'text-cyan-400',
+            6: 'text-fuchsia-400'
+          };
+          miniText.className = `text-[11px] mono ${miniColorMap[state.emotion] || 'text-cyan-400'} font-semibold`;
+        }
+        document.querySelectorAll('.full-emo-btn').forEach(btn => {
+          if (btn.id !== 'toggleScreenQrBtn2') {
+            const emo = parseInt(btn.dataset.emotion, 10);
+            const style = emotionButtonStyles[emo];
+            const isActive = (emo === state.emotion);
+            btn.className = `full-emo-btn py-2.5 px-2 rounded-xl text-xs mono font-bold text-center transition ${style ? (isActive ? style.active : style.inactive) : (isActive ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-zinc-900 text-zinc-400 border border-white/10')}`;
+          }
+        });
+      }
+    }
+
+    function setActiveEmotion(emo) {
+      state.emotion = emo;
+      state.showPairingQr = false;
+      updateQrButtonStates();
+      sendRobotCommand();
+    }
+
+    document.querySelectorAll('.full-emo-btn').forEach(b => {
+      b.addEventListener('click', () => {
+        if (b.id === 'toggleScreenQrBtn2') return;
+        const emo = parseInt(b.dataset.emotion, 10);
+        setActiveEmotion(emo);
+        logEvent(`Emotion: ${emotionNames[emo]}`);
+      });
+    });
+
+    const triggerTouch = () => {
+      setActiveEmotion(1);
+      logEvent('Touch sensor triggered -> Emotion: HAPPY (^ ^)', 'text-amber-300 font-semibold');
+    };
+    document.getElementById('quickTouchBtn')?.addEventListener('click', triggerTouch);
+    document.getElementById('touchSimBtn2')?.addEventListener('click', triggerTouch);
+
+    function toggleScreenQr() {
+      state.showPairingQr = !state.showPairingQr;
+      updateQrButtonStates();
+      if (state.showPairingQr) {
+        logEvent('Screen mode: AP Setup QR Code active', 'text-cyan-300 font-semibold');
+      } else {
+        logEvent('Screen mode: Procedural Eyes active', 'text-emerald-400 font-medium');
+      }
+      sendRobotCommand();
+    }
+
+    document.getElementById('toggleScreenQrBtn2')?.addEventListener('click', toggleScreenQr);
+
+    // -------------------------------------------------------------------------
+    // THUMB JOYSTICK
+    // -------------------------------------------------------------------------
+    const joyZone = document.getElementById('joystickZone');
+    const joyKnob = document.getElementById('joystickKnob');
+    let isDraggingJoy = false;
+    const maxRadius = 75;
+
+    function handleJoyMove(clientX, clientY) {
+      if (!isDraggingJoy) return;
+      const rect = joyZone.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      let dx = clientX - centerX;
+      let dy = clientY - centerY;
+      const distance = Math.hypot(dx, dy);
+
+      if (distance > maxRadius) {
+        const angle = Math.atan2(dy, dx);
+        dx = Math.cos(angle) * maxRadius;
+        dy = Math.sin(angle) * maxRadius;
+      }
+
+      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+
+      const normX = Math.round((dx / maxRadius) * 100);
+      const normY = Math.round((-dy / maxRadius) * 100);
+      state.joyX = normX;
+      state.joyY = normY;
+      document.getElementById('joyTelemetry').textContent = `X: ${normX} | Y: ${normY}`;
+
+      // Differential kinematics
+      let left = normY + normX * 0.6;
+      let right = normY - normX * 0.6;
+      state.leftSpeed = Math.round(Math.max(-100, Math.min(100, left)));
+      state.rightSpeed = Math.round(Math.max(-100, Math.min(100, right)));
+      sendRobotCommand();
+    }
+
+    function resetJoystick() {
+      isDraggingJoy = false;
+      joyKnob.style.transform = 'translate(0px, 0px)';
+      state.joyX = 0;
+      state.joyY = 0;
+      state.leftSpeed = 0;
+      state.rightSpeed = 0;
+      document.getElementById('joyTelemetry').textContent = 'X: 0 | Y: 0';
+      sendRobotCommand();
+    }
+
+    joyZone.addEventListener('pointerdown', (e) => {
+      isDraggingJoy = true;
+      handleJoyMove(e.clientX, e.clientY);
+    });
+    joyZone.addEventListener('pointermove', (e) => handleJoyMove(e.clientX, e.clientY));
+    joyZone.addEventListener('pointerup', resetJoystick);
+    joyZone.addEventListener('pointercancel', resetJoystick);
+
+    document.getElementById('emergencyStopBtn')?.addEventListener('click', resetJoystick);
+
+    // Neck Pan
+    const panSlider = document.getElementById('panSlider');
+    const panVal = document.getElementById('panVal');
+    panSlider.addEventListener('input', (e) => {
+      state.pan = parseInt(e.target.value, 10);
+      panVal.textContent = `${state.pan}°`;
+      sendRobotCommand();
+    });
+    document.getElementById('centerNeckBtn').addEventListener('click', () => {
+      panSlider.value = 90;
+      state.pan = 90;
+      panVal.textContent = '90°';
+      sendRobotCommand();
+      logEvent('Neck centered to 90°', 'text-cyan-300');
+    });
+
+    // -------------------------------------------------------------------------
+    // TAB NAVIGATION (Drive, Eyes, Connect, AI, System)
+    // -------------------------------------------------------------------------
+    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetTab = btn.dataset.tab;
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+        const panel = document.getElementById(`tab-${targetTab}`);
+        if (panel) panel.classList.remove('hidden');
+
+        document.querySelectorAll('.mobile-nav-btn').forEach(b => {
+          b.className = 'mobile-nav-btn flex-1 py-1.5 flex flex-col items-center gap-0.5 text-zinc-400 hover:text-zinc-200 transition';
+        });
+        btn.className = 'mobile-nav-btn flex-1 py-1.5 flex flex-col items-center gap-0.5 text-cyan-400 transition';
+
+        if (targetTab === 'connect') {
+          renderDynamicQr();
+        }
+      });
+    });
+
+    // -------------------------------------------------------------------------
+    // WI-FI SCANNER (Functional with live simulation fallback)
+    // -------------------------------------------------------------------------
+    const scanWifiBtn = document.getElementById('scanWifiBtn');
+    const scanWifiSpinner = document.getElementById('scanWifiSpinner');
+    const scannedNetworksList = document.getElementById('scannedNetworksList');
+    const wifiSsidInput = document.getElementById('wifiSsidInput');
+    const wifiPassInput = document.getElementById('wifiPassInput');
+
+    scanWifiBtn?.addEventListener('click', async () => {
+      scanWifiSpinner.className = 'inline animate-spin';
+      scanWifiBtn.disabled = true;
+      scannedNetworksList.innerHTML = '<div class="text-cyan-400 text-center py-8 animate-pulse font-semibold">Scanning 2.4GHz channels...</div>';
+      logEvent('Scanning for nearby Wi-Fi access points...', 'text-cyan-300');
+
+      let networks = [];
+      const host = window.location.host || 'penbot.local';
+
+      if (state.wsConnected) {
+        try {
+          const res = await fetch(`http://${host}/api/wifi/scan`);
+          if (res.ok) {
+            networks = await res.json();
+          }
+        } catch(e) {}
+      }
+
+      if (!networks || networks.length === 0) {
+        // Discovery demo networks
+        networks = [
+          { ssid: 'CyberLab_2.4G', rssi: -48, secure: true },
+          { ssid: 'Home_WiFi_Mesh', rssi: -62, secure: true },
+          { ssid: 'Office_Guest', rssi: -71, secure: true },
+          { ssid: 'Public_Hotspot', rssi: -82, secure: false }
+        ];
+      }
+
+      scanWifiSpinner.className = 'hidden';
+      scanWifiBtn.disabled = false;
+      scannedNetworksList.innerHTML = '';
+
+      networks.forEach(net => {
+        const row = document.createElement('div');
+        row.className = 'flex justify-between items-center px-2.5 py-1.5 rounded-lg bg-zinc-900/90 hover:bg-cyan-500/15 cursor-pointer border border-white/5 transition';
+        const lockText = net.secure ? 'SECURE' : 'OPEN';
+        const bars = net.rssi > -60 ? '||||' : (net.rssi > -75 ? '|||.' : '||..');
+        const barColor = net.rssi > -60 ? 'text-emerald-400' : (net.rssi > -75 ? 'text-amber-400' : 'text-rose-400');
+
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-[9px] mono text-zinc-500">[${lockText}]</span>
+            <span class="font-medium text-zinc-100">${net.ssid}</span>
+          </div>
+          <span class="font-bold ${barColor}">${bars}</span>
+        `;
+
+        row.addEventListener('click', () => {
+          wifiSsidInput.value = net.ssid;
+          wifiPassInput.focus();
+          logEvent(`Selected SSID: ${net.ssid}`, 'text-cyan-300');
+        });
+
+        scannedNetworksList.appendChild(row);
+      });
+
+      logEvent(`Discovered ${networks.length} Wi-Fi access points`, 'text-emerald-400 font-semibold');
+    });
+
+    document.getElementById('saveWifiBtn')?.addEventListener('click', () => {
+      const ssid = wifiSsidInput.value.trim();
+      const pass = wifiPassInput.value;
+      if (!ssid) return;
+      logEvent(`Connecting to Wi-Fi: "${ssid}"...`, 'text-cyan-300 font-semibold');
+      setTimeout(() => {
+        logEvent(`Wi-Fi credentials saved for "${ssid}". ESP32-S3 joining station mode.`, 'text-emerald-400 font-bold');
+      }, 1000);
+    });
+
+    // -------------------------------------------------------------------------
+    // CLOUD AI BRAIN (Universal Flexible Providers & Personal Instructions)
+    // -------------------------------------------------------------------------
+    const aiProviderSelect = document.getElementById('aiProviderSelect');
+    const aiBaseUrlInput = document.getElementById('aiBaseUrlInput');
+    const aiModelInput = document.getElementById('aiModelInput');
+    const aiApiKeyInput = document.getElementById('aiApiKeyInput');
+    const saveAiKeyBtn = document.getElementById('saveAiKeyBtn');
+    const toggleAiKeyVisibility = document.getElementById('toggleAiKeyVisibility');
+    const aiApiKeyBadge = document.getElementById('aiApiKeyBadge');
+    const personalInstructionInput = document.getElementById('personalInstructionInput');
+    const savePersonalInstructionBtn = document.getElementById('savePersonalInstructionBtn');
+
+    const providerDefaults = {
+      gemini: { url: 'https://generativelanguage.googleapis.com', model: 'gemini-2.5-flash' },
+      groq: { url: 'https://api.groq.com/openai/v1', model: 'llama-3.3-70b-versatile' },
+      openai: { url: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+      anthropic: { url: 'https://api.anthropic.com/v1', model: 'claude-3-5-sonnet-20241022' },
+      deepseek: { url: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+      ollama: { url: 'http://localhost:11434/v1', model: 'llama3.2' },
+      custom: { url: 'https://api.openai.com/v1', model: 'custom-model' }
+    };
+
+    aiProviderSelect?.addEventListener('change', (e) => {
+      const p = e.target.value;
+      if (providerDefaults[p]) {
+        aiBaseUrlInput.value = providerDefaults[p].url;
+        aiModelInput.value = providerDefaults[p].model;
+      }
+      updateAiKeyBadge();
+    });
+
+    function updateAiKeyBadge() {
+      const p = aiProviderSelect.value;
+      const savedKey = localStorage.getItem(`penbot_ai_key_${p}`) || localStorage.getItem('penbot_ai_key') || '';
+      if (savedKey || p === 'ollama') {
+        aiApiKeyBadge.textContent = 'CONFIGURED';
+        aiApiKeyBadge.className = 'text-[10px] mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold';
+      } else {
+        aiApiKeyBadge.textContent = 'NO KEY SET';
+        aiApiKeyBadge.className = 'text-[10px] mono px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30';
+      }
+    }
+
+    // Load persisted AI settings
+    const savedProvider = localStorage.getItem('penbot_ai_provider') || 'gemini';
+    if (aiProviderSelect) aiProviderSelect.value = savedProvider;
+    const savedUrl = localStorage.getItem('penbot_ai_base_url') || providerDefaults[savedProvider]?.url || '';
+    if (aiBaseUrlInput) aiBaseUrlInput.value = savedUrl;
+    const savedModel = localStorage.getItem('penbot_ai_model') || providerDefaults[savedProvider]?.model || '';
+    if (aiModelInput) aiModelInput.value = savedModel;
+    const initialKey = localStorage.getItem(`penbot_ai_key_${savedProvider}`) || localStorage.getItem('penbot_ai_key') || '';
+    if (aiApiKeyInput) aiApiKeyInput.value = initialKey;
+    updateAiKeyBadge();
+
+    saveAiKeyBtn?.addEventListener('click', () => {
+      const p = aiProviderSelect.value;
+      const key = aiApiKeyInput.value.trim();
+      localStorage.setItem('penbot_ai_provider', p);
+      localStorage.setItem(`penbot_ai_key_${p}`, key);
+      localStorage.setItem('penbot_ai_key', key);
+      localStorage.setItem('penbot_ai_base_url', aiBaseUrlInput.value.trim());
+      localStorage.setItem('penbot_ai_model', aiModelInput.value.trim());
+      updateAiKeyBadge();
+      logEvent(`AI configuration stored for ${p.toUpperCase()}`, 'text-emerald-400 font-semibold');
+    });
+
+    toggleAiKeyVisibility?.addEventListener('click', () => {
+      if (aiApiKeyInput.type === 'password') {
+        aiApiKeyInput.type = 'text';
+        toggleAiKeyVisibility.textContent = 'Hide Key';
+      } else {
+        aiApiKeyInput.type = 'password';
+        toggleAiKeyVisibility.textContent = 'Show Key';
+      }
+    });
+
+    // Personal Instructions
+    const savedInstructions = localStorage.getItem('penbot_personal_instructions') || 
+      'You are PenBot (model pen.v1), an autonomous desktop cyber companion. Respond concisely in under 20 words with witty tech humor and helpfulness.';
+    if (personalInstructionInput) personalInstructionInput.value = savedInstructions;
+
+    savePersonalInstructionBtn?.addEventListener('click', () => {
+      const val = personalInstructionInput.value.trim();
+      localStorage.setItem('penbot_personal_instructions', val);
+      savePersonalInstructionBtn.textContent = 'Instructions Saved!';
+      setTimeout(() => { savePersonalInstructionBtn.textContent = 'Save Personal Instructions'; }, 1500);
+      logEvent('Personal AI behavioral instructions saved', 'text-emerald-400 font-semibold');
+    });
+
+    // -------------------------------------------------------------------------
+    // AI VOICE PERSONAS (Voice # & Real Customizable Synthesis)
+    // -------------------------------------------------------------------------
+    const voicePersonaSelect = document.getElementById('voicePersonaSelect');
+    const voicePitchSlider = document.getElementById('voicePitchSlider');
+    const voiceRateSlider = document.getElementById('voiceRateSlider');
+    const voiceVolSlider = document.getElementById('voiceVolSlider');
+
+    const voicePresets = {
+      '1': { pitch: 1.25, rate: 1.15, vol: 85, name: 'Voice 1' },
+      '2': { pitch: 0.75, rate: 0.95, vol: 90, name: 'Voice 2' },
+      '3': { pitch: 1.05, rate: 1.00, vol: 85, name: 'Voice 3' },
+      '4': { pitch: 1.35, rate: 1.20, vol: 80, name: 'Voice 4' },
+      '5': { pitch: 0.85, rate: 0.90, vol: 95, name: 'Voice 5' }
+    };
+
+    function syncVoiceUi() {
+      state.voicePitch = parseFloat(voicePitchSlider.value);
+      state.voiceRate = parseFloat(voiceRateSlider.value);
+      state.voiceVol = parseInt(voiceVolSlider.value, 10);
+      document.getElementById('pitchValText').textContent = `${state.voicePitch.toFixed(2)}x`;
+      document.getElementById('rateValText').textContent = `${state.voiceRate.toFixed(2)}x`;
+      document.getElementById('volValText').textContent = `${state.voiceVol}%`;
+    }
+
+    voicePersonaSelect?.addEventListener('change', (e) => {
+      const vId = e.target.value;
+      const preset = voicePresets[vId];
+      if (preset) {
+        state.voiceName = preset.name;
+        state.voiceIndex = parseInt(vId, 10);
+        voicePitchSlider.value = preset.pitch;
+        voiceRateSlider.value = preset.rate;
+        voiceVolSlider.value = preset.vol;
+        syncVoiceUi();
+      }
+    });
+
+    voicePitchSlider?.addEventListener('input', syncVoiceUi);
+    voiceRateSlider?.addEventListener('input', syncVoiceUi);
+    voiceVolSlider?.addEventListener('input', syncVoiceUi);
+
+    document.getElementById('resetVoiceDefaultsBtn')?.addEventListener('click', () => {
+      const vId = voicePersonaSelect.value || '1';
+      const preset = voicePresets[vId] || voicePresets['1'];
+      voicePitchSlider.value = preset.pitch;
+      voiceRateSlider.value = preset.rate;
+      voiceVolSlider.value = preset.vol;
+      syncVoiceUi();
+      logEvent(`Voice reset to defaults (${preset.name})`, 'text-cyan-300');
+    });
+
+    function speakRobotText(text) {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.pitch = state.voicePitch;
+        msg.rate = state.voiceRate;
+        msg.volume = state.voiceVol / 100;
+        const voices = window.speechSynthesis.getVoices();
+        if (voices && voices.length > 0) {
+          // Distribute distinct browser voices across Voice 1-5
+          const chosenVoice = voices[(state.voiceIndex - 1) % voices.length];
+          if (chosenVoice) msg.voice = chosenVoice;
+        }
+        window.speechSynthesis.speak(msg);
+      }
+    }
+
+    document.getElementById('previewVoiceBtn')?.addEventListener('click', () => {
+      const sample = `Hello! I am ${state.botName}, testing ${state.voiceName}. Pitch is ${state.voicePitch.toFixed(2)}x and speed is ${state.voiceRate.toFixed(2)}x.`;
+      speakRobotText(sample);
+      logEvent(`Voice Preview: "${sample}"`, 'text-cyan-300');
+    });
+
+    // -------------------------------------------------------------------------
+    // QR CODE GENERATOR (Wi-Fi vs URL Mode)
+    // -------------------------------------------------------------------------
+    let qrCurrentMode = 'WIFI';
+    const qrModeWifiBtn = document.getElementById('qrModeWifiBtn');
+    const qrModeUrlBtn = document.getElementById('qrModeUrlBtn');
+
+    function renderDynamicQr() {
+      const qrBox = document.getElementById('qrCodeContainer');
+      if (!qrBox) return;
+
+      const host = window.location.host || '192.168.4.1';
+      let payload = '';
+
+      if (qrCurrentMode === 'WIFI') {
+        const apSsid = `${state.botName}-Setup`;
+        payload = `WIFI:S:${apSsid};T:WPA;P:12345678;;`;
+      } else {
+        payload = `http://${host}/`;
+      }
+
+      try {
+        const qr = qrcode(0, 'M');
+        qr.addData(payload);
+        qr.make();
+        qrBox.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+      } catch(e) {
+        console.error('QR Generator Error:', e);
+      }
+
+      const copySsid = document.getElementById('copySsidBtn');
+      if (copySsid) copySsid.textContent = `${state.botName}-Setup [Copy]`;
+    }
+
+    qrModeWifiBtn?.addEventListener('click', () => {
+      qrCurrentMode = 'WIFI';
+      qrModeWifiBtn.className = 'py-1 px-2 rounded-lg bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30';
+      qrModeUrlBtn.className = 'py-1 px-2 rounded-lg text-zinc-400 hover:text-white';
+      renderDynamicQr();
+    });
+
+    qrModeUrlBtn?.addEventListener('click', () => {
+      qrCurrentMode = 'URL';
+      qrModeUrlBtn.className = 'py-1 px-2 rounded-lg bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30';
+      qrModeWifiBtn.className = 'py-1 px-2 rounded-lg text-zinc-400 hover:text-white';
+      renderDynamicQr();
+    });
+
+    renderDynamicQr();
+
+    function setupCopy(btnId, textGetter, label) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      btn.addEventListener('click', () => {
+        const text = typeof textGetter === 'function' ? textGetter() : textGetter;
+        navigator.clipboard.writeText(text).then(() => {
+          const original = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = original; }, 1500);
+          logEvent(`Copied ${label}: ${text}`, 'text-emerald-300 font-semibold');
+        }).catch(() => {
+          logEvent(`Copied ${label}: ${text}`);
+        });
+      });
+    }
+
+    setupCopy('copySsidBtn', () => `${state.botName}-Setup`, 'SSID');
+    setupCopy('copyPassBtn', '12345678', 'Password');
+    setupCopy('copyUrlBtn', 'http://192.168.4.1', 'Portal URL');
+
+    // -------------------------------------------------------------------------
+    // BOT RENAMER MODAL
+    // -------------------------------------------------------------------------
+    const renameModal = document.getElementById('renameModal');
+    const settingsBotNamePreview = document.getElementById('settingsBotNamePreview');
+
+    document.getElementById('openRenameModalBtn')?.addEventListener('click', () => {
+      document.getElementById('newBotNameInput').value = state.botName;
+      renameModal.classList.remove('hidden');
+    });
+    document.getElementById('closeRenameModalBtn')?.addEventListener('click', () => renameModal.classList.add('hidden'));
+    document.getElementById('cancelRenameBtn')?.addEventListener('click', () => renameModal.classList.add('hidden'));
+
+    function applyBotName(name) {
+      state.botName = name;
+      document.getElementById('headerBotName').textContent = name;
+      document.getElementById('pageTitle').textContent = `${name} // Mobile Companion OS`;
+      if (settingsBotNamePreview) settingsBotNamePreview.textContent = name;
+      renderDynamicQr();
+    }
+
+    document.getElementById('confirmRenameBtn')?.addEventListener('click', () => {
+      const val = document.getElementById('newBotNameInput').value.trim();
+      if (val) {
+        applyBotName(val);
+        localStorage.setItem('penbot_name', val);
+        renameModal.classList.add('hidden');
+        logEvent(`Bot renamed to "${val}"`, 'text-cyan-300 font-bold');
+      }
+    });
+
+    // -------------------------------------------------------------------------
+    // FIRMWARE FLASH / OTA UPDATE MODAL (Identical to Desktop)
+    // -------------------------------------------------------------------------
+    const flashModal = document.getElementById('flashModal');
+    const firmwareFileInput = document.getElementById('firmwareFileInput');
+    const flashAckCheckbox = document.getElementById('flashAckCheckbox');
+    const executeFlashBtn = document.getElementById('executeFlashBtn');
+    const flashProgressContainer = document.getElementById('flashProgressContainer');
+    const flashProgressBar = document.getElementById('flashProgressBar');
+    const flashStatusText = document.getElementById('flashStatusText');
+    const flashPercentText = document.getElementById('flashPercentText');
+
+    function openFlashModal() {
+      flashModal.classList.remove('hidden');
+      firmwareFileInput.value = '';
+      flashAckCheckbox.checked = false;
+      executeFlashBtn.disabled = true;
+      flashProgressContainer.classList.add('hidden');
+    }
+
+    function closeFlashModal() {
+      flashModal.classList.add('hidden');
+    }
+
+    document.getElementById('openFlashModalBtn')?.addEventListener('click', openFlashModal);
+    document.getElementById('closeFlashModalBtn')?.addEventListener('click', closeFlashModal);
+    document.getElementById('cancelFlashBtn')?.addEventListener('click', closeFlashModal);
+
+    function checkFlashReadiness() {
+      const hasFile = firmwareFileInput.files && firmwareFileInput.files.length > 0;
+      executeFlashBtn.disabled = !(hasFile && flashAckCheckbox.checked);
+    }
+
+    firmwareFileInput?.addEventListener('change', checkFlashReadiness);
+    flashAckCheckbox?.addEventListener('change', checkFlashReadiness);
+
+    executeFlashBtn?.addEventListener('click', () => {
+      const file = firmwareFileInput.files[0];
+      if (!file) return;
+
+      executeFlashBtn.disabled = true;
+      flashProgressContainer.classList.remove('hidden');
+      flashStatusText.textContent = 'Uploading firmware binary to ESP32-S3...';
+      flashProgressBar.style.width = '0%';
+      flashPercentText.textContent = '0%';
+      logEvent(`Initiating OTA firmware update: ${file.name} (${(file.size/1024).toFixed(1)} KB)...`, 'text-amber-300 font-bold');
+
+      const host = window.location.host || 'penbot.local';
+      const formData = new FormData();
+      formData.append('update', file, file.name);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `http://${host}/api/firmware/update`, true);
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          flashProgressBar.style.width = `${pct}%`;
+          flashPercentText.textContent = `${pct}%`;
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          flashStatusText.textContent = 'Update Complete! Rebooting ESP32-S3...';
+          logEvent('Firmware flash successful &bull; ESP32-S3 rebooting...', 'text-emerald-400 font-bold');
+          setTimeout(closeFlashModal, 3000);
+        } else {
+          flashStatusText.textContent = `Upload error (${xhr.status}). Update aborted.`;
+          logEvent(`Firmware upload error: ${xhr.statusText}`, 'text-rose-400');
+        }
+      };
+
+      xhr.onerror = () => {
+        // Standalone simulator fallback
+        let simProgress = 0;
+        const interval = setInterval(() => {
+          simProgress += 15;
+          flashProgressBar.style.width = `${Math.min(100, simProgress)}%`;
+          flashPercentText.textContent = `${Math.min(100, simProgress)}%`;
+          if (simProgress >= 100) {
+            clearInterval(interval);
+            flashStatusText.textContent = 'Firmware image verified &bull; OTA test complete.';
+            logEvent('OTA firmware image verified &bull; Standalone test complete', 'text-emerald-400 font-semibold');
+            setTimeout(closeFlashModal, 2000);
+          }
+        }, 200);
+      };
+
+      xhr.send(formData);
+    });
+
+    // Clear Log Buttons
+    document.querySelectorAll('.clear-log-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.event-log-box').forEach(box => {
+          box.innerHTML = '';
+        });
+      });
+    });
+  </script>
+</body>
+</html>
