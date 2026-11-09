@@ -31,19 +31,19 @@ A full-stack embedded robotics monolith combining a **C++ FreeRTOS dual-core fir
 
 ## Master Hardware Pinout (LOCKED SPECIFICATION)
 
-**CRITICAL DIRECTIVE:** Agents MUST NEVER reassign these pins or use ESP32-S3 strapping pins (`GPIO 0, 3, 45, 46`) or internal Octal Flash/PSRAM pins (`GPIO 26–32`).
+**CRITICAL DIRECTIVE:** Agents MUST NEVER reassign these pins or use ESP32-S3 strapping pins (`GPIO 0, 3, 45, 46`) or internal Octal Flash/PSRAM pins (`GPIO 26–37`). Note: On ESP32-S3 N16R8, GPIO 33–37 are internally bonded to the 8MB Octal PSRAM bus and MUST NOT be used for GPIO.
 
 | Subsystem | Component | ESP32-S3 GPIO Pin(s) | Power Rail & Notes |
 | :--- | :--- | :--- | :--- |
-| **Face Display** | 1.3" IPS TFT (`ST7789` 240x240) | `SCK`: **12**, `MOSI`: **11**, `CS`: **10**, `DC`: **9**, `RST`: **13** | `BLK` wired to `3V3`. Driven via SPI DMA. |
+| **Face Display** | 1.3" IPS TFT (`ST7789` 240x240) | `SCK`: **12**, `MOSI`: **11**, `DC`: **9**, `RST`: **13**, `BLK`: **3V3** (or **10**) | 7-pin module: CS tied to GND internally; BLK to 3V3 (or GPIO 10). |
 | **Ears (Mic)** | INMP441 / MSM261 I2S Mic | `SD`: **2**, `WS`: **42**, `SCK`: **41** | `3V3` rail. `L/R` pin wired to `GND`. |
 | **Mouth (Amp)** | MAX98357A I2S Class-D Amp | `BCLK`: **16**, `LRC`: **17**, `DIN`: **18** | **5V Boost Rail** (Never power from ESP32 3V3). |
 | **Touch Sensor** | Top Brass Standoff Screw | `TOUCH4`: **GPIO 4** | Internal ESP32-S3 hardware capacitive touch. |
 | **Head Laser (ToF)** | VL53L0X Distance Sensor | `SDA`: **8**, `SCL`: **15** | `3V3` rail. Mounted above LCD display in the head (pans with neck). |
 | **Body Ultrasonic** | HC-SR04 / HC-SR04P Ultrasonic | `TRIG`: **1**, `ECHO`: **5** | `3V3` or `5V` rail. Mounted in front of the robot body chassis. |
 | **Cliff & Grab IR** | 2x Blue TCRT5000 IR Modules | Left `D0`: **6**, Right `D0`: **7** | `3V3` rail. Single `HIGH` = Cliff (`SCARED`). Both `HIGH > 350ms` = Grabbed (`DIZZY`). |
-| **Drive Wheels** | 2x 360° Continuous Micro Servos | Left Wheel: **35**, Right Wheel: **36** | **5V Boost Rail** + `1000µF 16V` electrolytic capacitor. |
-| **Neck Gimbal** | 1x 180° Micro Servo (Pan Only) | Neck Pan (X): **37** (Panning only, no tilting) | **5V Boost Rail** + `1000µF 16V` electrolytic capacitor. |
+| **Drive Wheels** | 2x 360° Continuous Micro Servos | Left Wheel: **21**, Right Wheel: **47** | **5V Boost Rail** + `1000µF 16V` electrolytic capacitor. |
+| **Neck Gimbal** | 1x 180° Micro Servo (Pan Only) | Neck Pan (X): **14** (Panning only, no tilting) | **5V Boost Rail** + `1000µF 16V` electrolytic capacitor. |
 
 ---
 
@@ -101,7 +101,7 @@ All facial expressions are rendered procedurally at **60FPS** inside a `240x240`
 - **NO Cross-Core Race Conditions:** Core 0 and Core 1 must communicate exclusively via `cmdQueue` (`xQueueSend` / `xQueueReceive`) and `telemetryMutex` (`xSemaphoreTake`).
 
 ### 2. Power & Memory Safety Mandates
-- **PSRAM Allocation:** Always enable `-DBOARD_HAS_PSRAM` and `board_build.arduino.memory_type = qio_opi` in `platformio.ini` so the 115KB `240x240` 16-bit display sprite lives in the 8MB Octal PSRAM instead of exhausting internal SRAM.
+- **PSRAM & Flash Allocation:** Always enable `-DBOARD_HAS_PSRAM`, `board_build.arduino.memory_type = dio_opi`, and `board_build.flash_mode = dio` in `platformio.ini` (supporting XMC Flash while enabling full 8MB Octal PSRAM) so the 115KB `240x240` 16-bit display sprite lives in the 8MB Octal PSRAM instead of exhausting internal SRAM.
 - **Servo Slew-Rate Limiting:** Never snap neck servos (`GPIO 37, 38`) instantaneously across wide angles; always interpolate via `easeValue()` to prevent current spikes on the MT3608 5V boost rail.
 - **Zero `delay()` in Tasks:** Never call blocking `delay()` inside `AsyncWebServer` callbacks. Use `vTaskDelay(pdMS_TO_TICKS(ms))` inside FreeRTOS tasks.
 

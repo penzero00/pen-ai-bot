@@ -20,16 +20,196 @@
 #include <ArduinoJson.h>
 #include <ESP32Servo.h>
 #include <ESPAsyncWebServer.h>
-#include <TFT_eSPI.h>
+
+#include <Adafruit_GFX.h>
+#include <Adafruit_ST7789.h>
+#include <SPI.h>
+#include <ESP_I2S.h>
 
 #include "config.h"
 #include "qrcode.h"
 #include "state.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#ifndef TFT_BLACK
+#define TFT_BLACK 0x0000
+#endif
+#ifndef TFT_WHITE
+#define TFT_WHITE 0xFFFF
+#endif
+
+#define MC_DATUM 1
+#define TC_DATUM 2
+
+class NativeST7789Display : public Adafruit_GFX {
+public:
+  uint16_t* buffer = nullptr;
+  uint8_t textDatum = 0;
+  SPIClass* customSpi = nullptr;
+  Adafruit_ST7789* driver = nullptr;
+
+  NativeST7789Display() : Adafruit_GFX(240, 240) {}
+
+  void init() {
+    pinMode(PIN_TFT_BLK, OUTPUT);
+    digitalWrite(PIN_TFT_BLK, HIGH); // Drive Backlight ON (if wired to GPIO 10)
+
+    pinMode(PIN_TFT_RST, OUTPUT);
+    digitalWrite(PIN_TFT_RST, HIGH);
+    delay(10);
+    digitalWrite(PIN_TFT_RST, LOW);
+    delay(20);
+    digitalWrite(PIN_TFT_RST, HIGH);
+    delay(120);
+
+    customSpi = new SPIClass(FSPI);
+    customSpi->begin(PIN_TFT_SCK, -1, PIN_TFT_MOSI, -1);
+    driver = new Adafruit_ST7789(customSpi, -1, PIN_TFT_DC, PIN_TFT_RST);
+    driver->init(240, 240, SPI_MODE3);
+    driver->setSPISpeed(20000000);
+    driver->setRotation(2); // Physical faceplate mounting orientation
+    driver->fillScreen(ST77XX_BLACK);
+
+    if (psramFound()) {
+      buffer = (uint16_t*)ps_malloc(240 * 240 * sizeof(uint16_t));
+    }
+    if (!buffer) {
+      buffer = (uint16_t*)malloc(240 * 240 * sizeof(uint16_t));
+    }
+    if (buffer) {
+      memset(buffer, 0, 240 * 240 * sizeof(uint16_t));
+    }
+  }
+
+  void drawPixel(int16_t x, int16_t y, uint16_t color) override {
+    if (x < 0 || x >= 240 || y < 0 || y >= 240 || !buffer) return;
+    buffer[y * 240 + x] = color;
+  }
+
+  void fillSprite(uint16_t color) {
+    if (!buffer) return;
+    for (int i = 0; i < 240 * 240; i++) buffer[i] = color;
+  }
+
+  void fillScreen(uint16_t color) override {
+    fillSprite(color);
+  }
+
+  void setTextDatum(uint8_t d) {
+    textDatum = d;
+  }
+
+  void drawString(const char* str, int16_t x, int16_t y, uint8_t size = 1) {
+    int16_t x1, y1;
+    uint16_t w, h;
+    setTextSize(size);
+    getTextBounds(str, 0, 0, &x1, &y1, &w, &h);
+    int16_t px = x;
+    int16_t py = y;
+    if (textDatum == MC_DATUM) {
+      px = x - w / 2;
+      py = y - h / 2;
+    } else if (textDatum == TC_DATUM) {
+      px = x - w / 2;
+      py = y;
+    }
+    setCursor(px, py);
+    print(str);
+  }
+
+  void drawWideLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, float w, uint16_t color) {
+    int thickness = (int)w;
+    if (thickness < 1) thickness = 1;
+    int half = thickness / 2;
+    for (int i = -half; i <= half; i++) {
+      drawLine(x0 + i, y0, x1 + i, y1, color);
+      drawLine(x0, y0 + i, x1, y1 + i, color);
+    }
+  }
+
+  void drawArc(int16_t cx, int16_t cy, int16_t r0, int16_t r1, float a0, float a1, uint16_t color) {
+    float rad0 = a0 * 0.0174532925f;
+    float rad1 = a1 * 0.0174532925f;
+    int maxR = max(r0, r1);
+    float step = (maxR > 0) ? (1.0f / (float)maxR) : 0.05f;
+    for (float a = rad0; a <= rad1; a += step) {
+      float ca = cos(a);
+      float sa = sin(a);
+      for (int16_t r = min(r0, r1); r <= max(r0, r1); r++) {
+        drawPixel(cx + (int16_t)(ca * r), cy + (int16_t)(sa * r), color);
+      }
+    }
+  }
+
+  void pushSprite(int32_t = 0, int32_t = 0) {
+    if (!driver || !buffer) return;
+    driver->drawRGBBitmap(0, 0, buffer, 240, 240);
+  }
+};
+
 // Global RTOS synchronization primitives & customizable bot profile
 QueueHandle_t cmdQueue;
 SemaphoreHandle_t telemetryMutex;
+
+// MAX98357A via Arduino ESP_I2S (SD@3V3 = LEFT channel)
+static I2SClass ampI2s;
+static bool ampReady = false;
+
+static bool ampStart() {
+  if (ampReady) return true;
+
+  ampI2s.setPins(PIN_AMP_BCLK, PIN_AMP_LRC, PIN_AMP_DIN);
+  // 16 kHz STD stereo is the most reliable first-sound path for MAX98357A
+  if (!ampI2s.begin(I2S_MODE_STD, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO)) {
+    Serial.printf("[Amp] ESP_I2S begin failed, err=%d\n", ampI2s.lastError());
+    return false;
+  }
+
+  ampReady = true;
+  Serial.println("[Amp] MAX98357A ESP_I2S ready (16kHz stereo, L+R filled).");
+  return true;
+}
+
+static void ampPlayTone(int freqHz, int durationMs, int16_t amplitude) {
+  if (!ampReady) return;
+
+  const uint32_t sampleRate = 16000;
+  const int framesPerBuf = 256;
+  int16_t buffer[512];
+  float phase = 0.0f;
+  const float step = 2.0f * (float)M_PI * (float)freqHz / (float)sampleRate;
+  unsigned long startT = millis();
+
+  while ((int)(millis() - startT) < durationMs) {
+    for (int i = 0; i < framesPerBuf; i++) {
+      int16_t sample = (int16_t)(sinf(phase) * (float)amplitude);
+      buffer[i * 2] = sample;      // LEFT  (SD@3V3)
+      buffer[i * 2 + 1] = sample;  // RIGHT
+      phase += step;
+      if (phase >= 2.0f * (float)M_PI) phase -= 2.0f * (float)M_PI;
+    }
+    ampI2s.write(buffer, sizeof(buffer));
+  }
+}
+
+static void ampBootBeep() {
+  if (!ampStart()) {
+    Serial.println("[Amp] Boot beep skipped — I2S init failed.");
+    return;
+  }
+  // Long loud chime — hard to miss if the amp/speaker path works
+  ampPlayTone(440, 600, 25000);
+  vTaskDelay(pdMS_TO_TICKS(100));
+  ampPlayTone(880, 600, 25000);
+  vTaskDelay(pdMS_TO_TICKS(100));
+  ampPlayTone(1320, 500, 25000);
+  Serial.println("[Amp] Boot beep played (440/880/1320).");
+}
 char globalBotName[32] = "PenBot";
+volatile bool networkReady = false;
 
 RobotTelemetry globalTelemetry = {
     850,                   // tofDistanceMm (Head Laser ToF)
@@ -55,8 +235,8 @@ RobotTelemetry globalTelemetry = {
 VoiceConfig globalVoiceConfig = {"Puck", 1.10f, 1.05f, 85};
 
 // Hardware instances (Core 1) — Panning only, no tilting
-TFT_eSPI tft = TFT_eSPI();
-TFT_eSprite faceSprite = TFT_eSprite(&tft);
+NativeST7789Display faceSprite;
+NativeST7789Display& tft = faceSprite;
 Servo servoWheelL, servoWheelR, servoNeckPan;
 Adafruit_VL53L0X tofSensor = Adafruit_VL53L0X();
 bool tofOnline = false;
@@ -193,12 +373,12 @@ void renderProceduralEyes(EyeEmotion emotion, uint32_t tick,
     uint16_t scaredColor = 0x07FF; // Electric Cyan
 
     // Left eye chevron: > (Apex pointing right/inward)
-    faceSprite.drawWideLine(46 + jitterX, 94 + jitterY, 92 + jitterX, 120 + jitterY, 10.0f, scaredColor, TFT_BLACK);
-    faceSprite.drawWideLine(92 + jitterX, 120 + jitterY, 46 + jitterX, 146 + jitterY, 10.0f, scaredColor, TFT_BLACK);
+    faceSprite.drawWideLine(46 + jitterX, 94 + jitterY, 92 + jitterX, 120 + jitterY, 10.0f, scaredColor);
+    faceSprite.drawWideLine(92 + jitterX, 120 + jitterY, 46 + jitterX, 146 + jitterY, 10.0f, scaredColor);
 
     // Right eye chevron: < (Apex pointing left/inward)
-    faceSprite.drawWideLine(194 - jitterX, 94 - jitterY, 148 - jitterX, 120 - jitterY, 10.0f, scaredColor, TFT_BLACK);
-    faceSprite.drawWideLine(148 - jitterX, 120 - jitterY, 194 - jitterX, 146 - jitterY, 10.0f, scaredColor, TFT_BLACK);
+    faceSprite.drawWideLine(194 - jitterX, 94 - jitterY, 148 - jitterX, 120 - jitterY, 10.0f, scaredColor);
+    faceSprite.drawWideLine(148 - jitterX, 120 - jitterY, 194 - jitterX, 146 - jitterY, 10.0f, scaredColor);
 
     drawBatteryHud(batteryPct);
     faceSprite.pushSprite(0, 0);
@@ -233,11 +413,11 @@ void renderProceduralEyes(EyeEmotion emotion, uint32_t tick,
   if (emotion == EMOTION_HAPPY) {
     uint16_t happyColor = 0x07E0; // Emerald Green
     if (isBlinking) {
-      faceSprite.drawWideLine(42, 122 + bounceY, 98, 122 + bounceY, 6.0f, happyColor, TFT_BLACK);
-      faceSprite.drawWideLine(142, 122 + bounceY, 198, 122 + bounceY, 6.0f, happyColor, TFT_BLACK);
+      faceSprite.drawWideLine(42, 122 + bounceY, 98, 122 + bounceY, 6.0f, happyColor);
+      faceSprite.drawWideLine(142, 122 + bounceY, 198, 122 + bounceY, 6.0f, happyColor);
     } else {
-      faceSprite.drawArc(70, 114 + bounceY, 30, 20, 110, 250, happyColor, TFT_BLACK, true);
-      faceSprite.drawArc(170, 114 + bounceY, 30, 20, 110, 250, happyColor, TFT_BLACK, true);
+      faceSprite.drawArc(70, 114 + bounceY, 30, 20, 110, 250, happyColor);
+      faceSprite.drawArc(170, 114 + bounceY, 30, 20, 110, 250, happyColor);
     }
     drawBatteryHud(batteryPct);
     faceSprite.pushSprite(0, 0);
@@ -297,6 +477,8 @@ void renderProceduralEyes(EyeEmotion emotion, uint32_t tick,
 // ============================================================================
 void TaskCore1Hardware(void *pvParameters) {
   (void)pvParameters;
+  Serial.println("[Core 1] Starting Hardware Init..."); Serial.flush();
+
   // 1. Initialize Cliff & Front Ultrasonic Sensors
   pinMode(PIN_CLIFF_LEFT_D0, INPUT);
   pinMode(PIN_CLIFF_RIGHT_D0, INPUT);
@@ -306,28 +488,26 @@ void TaskCore1Hardware(void *pvParameters) {
 
   // 2. Initialize I2C VL53L0X Laser Rangefinder (Mounted above LCD in head)
   Wire.begin(PIN_TOF_SDA, PIN_TOF_SCL);
+  Wire.setTimeOut(25); // Freeze-proof timeout
   if (tofSensor.begin(0x29, false, &Wire)) {
     tofOnline = true;
     tofSensor.startRangeContinuous(50);
+    Serial.println("[Core 1] VL53L0X Online."); Serial.flush();
+  } else {
+    Serial.println("[Core 1] VL53L0X Offline."); Serial.flush();
   }
 
-  // 3. Attach Wheels and Neck Pan Servos (Panning only, no tilting)
+  // 3. Attach Neck Pan Servo & Initialize Wheels to Drive-on-Demand (0V LOW)
   ESP32PWM::allocateTimer(0);
-  ESP32PWM::allocateTimer(1);
-  servoWheelL.setPeriodHertz(50);
-  servoWheelR.setPeriodHertz(50);
   servoNeckPan.setPeriodHertz(50);
-
-  servoWheelL.attach(PIN_SERVO_WHEEL_L, 500, 2400);
-  servoWheelR.attach(PIN_SERVO_WHEEL_R, 500, 2400);
   servoNeckPan.attach(PIN_SERVO_NECK_PAN, 500, 2400);
 
-  // 4. Initialize 1.3" ST7789 Display with PSRAM Sprite
-  tft.init();
-  tft.setRotation(0);
-  tft.fillScreen(TFT_BLACK);
-  faceSprite.setColorDepth(16);
-  faceSprite.createSprite(240, 240); // Allocated in 8MB PSRAM
+  // Native 14-bit 50Hz LEDC hardware timers for wheels (bypasses library 500us clamp)
+  ledcAttach(PIN_SERVO_WHEEL_L, 50, 14);
+  ledcAttach(PIN_SERVO_WHEEL_R, 50, 14);
+  ledcWrite(PIN_SERVO_WHEEL_L, 0);
+  ledcWrite(PIN_SERVO_WHEEL_R, 0);
+  Serial.println("[Core 1] Servos ready in Drive-on-Demand mode (0V cutoff)."); Serial.flush();
 
   float smoothPan = NECK_PAN_CENTER;
   RobotCommand activeCmd = {
@@ -336,6 +516,36 @@ void TaskCore1Hardware(void *pvParameters) {
   uint32_t frameTick = 0;
   uint32_t bothAirStartMs = 0;
   uint16_t usonicMm = 1200;
+
+  auto setWheelPulse = [](uint8_t pin, int us) {
+    if (us <= 0) {
+      ledcWrite(pin, 0); // Solid 0V cutoff (Drive-on-Demand dead stop)
+    } else {
+      uint32_t duty = (uint32_t)((us * 16384ULL) / 20000ULL);
+      ledcWrite(pin, duty);
+    }
+  };
+
+  // Calibrated Kinematics Helper: Native LEDC Drive-on-Demand for Glued SG90 Potentiometers
+  auto setWheels = [&](int8_t leftMix, int8_t rightMix) {
+    if (leftMix == 0 && rightMix == 0) {
+      setWheelPulse(PIN_SERVO_WHEEL_L, 0);
+      setWheelPulse(PIN_SERVO_WHEEL_R, 0);
+    } else {
+      // Left Wheel: 1000 neutral, 1500 forward, 450 reverse
+      int leftUs = 1000;
+      if (leftMix > 0) leftUs = map(leftMix, 0, 100, 1000, 1500);
+      else if (leftMix < 0) leftUs = map(leftMix, -100, 0, 450, 1000);
+
+      // Right Wheel: 800 neutral, 500 forward, 1200 reverse
+      int rightUs = 800;
+      if (rightMix > 0) rightUs = map(rightMix, 0, 100, 800, 500);
+      else if (rightMix < 0) rightUs = map(rightMix, -100, 0, 1200, 800);
+
+      setWheelPulse(PIN_SERVO_WHEEL_L, leftUs);
+      setWheelPulse(PIN_SERVO_WHEEL_R, rightUs);
+    }
+  };
 
   for (;;) {
     frameTick++;
@@ -346,8 +556,7 @@ void TaskCore1Hardware(void *pvParameters) {
       activeCmd = incoming;
     }
 
-    // B. CRITICAL SAFETY: Read TCRT5000 Cliff Sensors FIRST (HIGH = Empty Air /
-    // Cliff)
+    // B. Read TCRT5000 Cliff Sensors FIRST (HIGH = Empty Air / Cliff)
     bool cliffL = digitalRead(PIN_CLIFF_LEFT_D0) == HIGH;
     bool cliffR = digitalRead(PIN_CLIFF_RIGHT_D0) == HIGH;
 
@@ -357,14 +566,14 @@ void TaskCore1Hardware(void *pvParameters) {
       distMm = tofSensor.readRangeResult();
     }
 
-    // Read Front Body Ultrasonic Distance (HC-SR04, pinged every 6 frames to keep 60Hz loop fast)
+    // Read Front Body Ultrasonic Distance (HC-SR04, pinged every 6 frames)
     if (frameTick % 6 == 0) {
       digitalWrite(PIN_USONIC_TRIG, LOW);
       delayMicroseconds(2);
       digitalWrite(PIN_USONIC_TRIG, HIGH);
       delayMicroseconds(10);
       digitalWrite(PIN_USONIC_TRIG, LOW);
-      unsigned long durationUs = pulseIn(PIN_USONIC_ECHO, HIGH, 20000); // 20ms timeout (~3.4m)
+      unsigned long durationUs = pulseIn(PIN_USONIC_ECHO, HIGH, 20000); // 20ms timeout
       if (durationUs > 0) {
         usonicMm = (uint16_t)((durationUs * 10) / 58);
       } else {
@@ -372,8 +581,8 @@ void TaskCore1Hardware(void *pvParameters) {
       }
     }
 
-    // D. Read Capacitive Touch Brass Standoff (Pin 4)
-    bool touched = touchRead(PIN_TOUCH_PAD) > TOUCH_THRESHOLD;
+    // D. Capacitive Touch Brass Standoff (Pin 4)
+    bool touched = false;
     if (touched) {
       activeCmd.showPairingQr = false;
       activeCmd.emotion = EMOTION_HAPPY;
@@ -395,26 +604,20 @@ void TaskCore1Hardware(void *pvParameters) {
       bothAirStartMs = 0;
     }
 
-    int leftPWM = WHEEL_STOP_PWM;
-    int rightPWM = WHEEL_STOP_PWM;
-
     if (pickedUpAirborne) {
       // Robot is grabbed in mid-air -> Stop wheels, trigger DIZZY eyes & head wobble
       activeCmd.showPairingQr = false;
       activeCmd.emotion = EMOTION_DIZZY_PICKUP;
-      servoWheelL.write(WHEEL_STOP_PWM);
-      servoWheelR.write(WHEEL_STOP_PWM);
+      setWheels(0, 0);
       activeCmd.targetPan = 90 + (int8_t)(sin(frameTick * 0.2f) * 22.0f);
     } else if (cliffL || cliffR) {
       // Immediate scared reverse maneuver to prevent falling off desk
       activeCmd.showPairingQr = false;
       activeCmd.emotion = EMOTION_SCARED_CLIFF;
-      servoWheelL.write(WHEEL_STOP_PWM - 35);
-      servoWheelR.write(WHEEL_STOP_PWM + 35);
+      setWheels(-100, -100); // Calibrated reverse on both wheels
       renderProceduralEyes(EMOTION_SCARED_CLIFF, frameTick);
       vTaskDelay(pdMS_TO_TICKS(CLIFF_REVERSE_MS));
-      servoWheelL.write(WHEEL_STOP_PWM);
-      servoWheelR.write(WHEEL_STOP_PWM);
+      setWheels(0, 0); // Complete stop with 0V cutoff
       activeCmd.joyX = 0;
       activeCmd.joyY = 0;
     } else {
@@ -422,31 +625,24 @@ void TaskCore1Hardware(void *pvParameters) {
       int8_t safeJoyY = activeCmd.joyY;
       uint16_t forwardObstacleMm = (distMm < usonicMm) ? distMm : usonicMm;
       if (safeJoyY > 0 && forwardObstacleMm < WALL_STOP_DIST_MM) {
-        safeJoyY = 0; // Block forward motion into wall
+        safeJoyY = 0; // Block forward motion into obstacle
       }
 
       // Differential drive mixing
       int8_t leftMix = constrain(safeJoyY + activeCmd.joyX, -100, 100);
       int8_t rightMix = constrain(safeJoyY - activeCmd.joyX, -100, 100);
-
-      leftPWM = map(leftMix, -100, 100, 45, 135);
-      rightPWM = map(rightMix, -100, 100, 135, 45);
-
-      servoWheelL.write(leftPWM);
-      servoWheelR.write(rightPWM);
+      setWheels(leftMix, rightMix);
     }
 
     // F. Smooth Cubic Easing on Neck Pan (Horizontal Panning only)
     smoothPan = easeValue(smoothPan, activeCmd.targetPan, 0.15f);
     servoNeckPan.write((int)smoothPan);
 
-    // G. Render 60FPS Procedural Eyes or Setup QR Screen
+    // G. Render 60FPS Procedural Eyes or Pairing Screen
     if (activeCmd.showPairingQr) {
-      char apSsid[48];
-      char qrText[96];
-      snprintf(apSsid, sizeof(apSsid), "%s-Setup", globalBotName);
-      snprintf(qrText, sizeof(qrText), "WIFI:S:%s;T:WPA;P:12345678;;", apSsid);
-      renderPairingScreen(qrText, apSsid, "12345678", "http://192.168.4.1");
+      char qrTarget[64];
+      snprintf(qrTarget, sizeof(qrTarget), "WIFI:S:%s;T:WPA;P:12345678;;", globalTelemetry.wifiSsid);
+      renderPairingScreen(qrTarget, globalTelemetry.wifiSsid, "12345678", "http://192.168.4.1", 88);
     } else {
       renderProceduralEyes(activeCmd.emotion, frameTick);
     }
@@ -517,7 +713,13 @@ void onWsEvent(AsyncWebSocket * /*server*/, AsyncWebSocketClient * /*client*/,
 
 void TaskCore0Network(void *pvParameters) {
   (void)pvParameters;
+  Serial.println("[Core 0] TaskCore0Network started."); Serial.flush();
+
+  // Mouth amp lives on Core 0 (I2S TX). SD@3V3 => LEFT channel must carry PCM.
+  ampBootBeep();
+
   LittleFS.begin(true);
+  Serial.println("[Core 0] LittleFS mounted."); Serial.flush();
   prefs.begin("penbot", false);
 
   String savedBotName = prefs.getString("botName", "PenBot");
@@ -539,17 +741,22 @@ void TaskCore0Network(void *pvParameters) {
   }
 
   if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[Core 0] Setting up WiFi AP..."); Serial.flush();
     WiFi.mode(WIFI_AP);
     String apSsid = String(globalBotName) + "-Setup";
     WiFi.softAP(apSsid.c_str(), "12345678");
+    Serial.println("[Core 0] WiFi AP active: " + apSsid); Serial.flush();
     isAp = true;
     dnsServer.start(53, "*", WiFi.softAPIP());
+    Serial.println("[Core 0] DNS Server started."); Serial.flush();
 
     // Display QR Code on ST7789 screen for quick phone onboarding
     RobotCommand cmd = {0, 0, NECK_PAN_CENTER, NECK_TILT_CENTER,
                         EMOTION_IDLE, MODE_MANUAL, false, true};
     xQueueSend(cmdQueue, &cmd, 0);
   }
+
+  Serial.println("[Core 0] Registering HTTP routes..."); Serial.flush();
 
   // --- Bot Renaming & Information Endpoints ---
   server.on("/api/bot/info", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -742,6 +949,8 @@ void TaskCore0Network(void *pvParameters) {
   server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 
   server.begin();
+  networkReady = true;
+  Serial.println("[Core 0] HTTP WebServer started!"); Serial.flush();
 
   for (;;) {
     ws.cleanupClients();
@@ -786,6 +995,37 @@ void TaskCore0Network(void *pvParameters) {
 
 void setup() {
   Serial.begin(115200);
+
+  // Give serial terminal time to attach
+  for (int i = 0; i < 4; i++) {
+    delay(400);
+    Serial.print(".");
+    Serial.flush();
+  }
+  Serial.println(" [READY]");
+
+  Serial.println("\n========================================================");
+  Serial.println("   CYBER-CUBE MINI (PEN-AI-BOT) — MONOLITH FIRMWARE    ");
+  Serial.println("========================================================");
+  Serial.printf("Flash: %uMB | PSRAM: %uMB (Free: %uKB)\n",
+                (unsigned int)(ESP.getFlashChipSize() / (1024 * 1024)),
+                (unsigned int)(ESP.getPsramSize() / (1024 * 1024)),
+                (unsigned int)(ESP.getFreePsram() / 1024));
+  Serial.println("Core 0: Network / Web OS / AI Cloud Bridge / MAX98357A Amp");
+  Serial.println("Core 1: 60FPS Eyes / Kinematics / Safety Sensors");
+  Serial.printf("Amp pins: BCLK=%d LRC=%d DIN=%d (I2S_NUM_%d, SD@3V3=LEFT)\n",
+                PIN_AMP_BCLK, PIN_AMP_LRC, PIN_AMP_DIN, I2S_AMP_PORT_NUM);
+  Serial.println("========================================================\n");
+  Serial.flush();
+
+  // 1. Initialize ST7789 IPS Display cleanly in setup()
+  Serial.println("[Setup] Initializing ST7789 Display..."); Serial.flush();
+  tft.init();
+  tft.setRotation(0);
+  tft.fillScreen(TFT_BLACK);
+  renderProceduralEyes(EMOTION_IDLE, 0);
+  Serial.println("[Setup] ST7789 Display initialized & initial face rendered!"); Serial.flush();
+
   cmdQueue = xQueueCreate(10, sizeof(RobotCommand));
   telemetryMutex = xSemaphoreCreateMutex();
 
@@ -797,5 +1037,19 @@ void setup() {
 }
 
 void loop() {
-  vTaskDelete(NULL); // Managed entirely by FreeRTOS Tasks
+  static uint32_t lastPrint = 0;
+  if (millis() - lastPrint >= 1500) {
+    lastPrint = millis();
+    if (xSemaphoreTake(telemetryMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+      Serial.printf("[PEN-BOT] Alive | WiFi: %s | IP: %s | Pan: %d | Emotion: %d | PSRAM Free: %u KB\n",
+                    globalTelemetry.wifiSsid[0] ? globalTelemetry.wifiSsid : (WiFi.status() == WL_CONNECTED ? WiFi.SSID().c_str() : "PenBot-Setup"),
+                    (WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : WiFi.softAPIP().toString().c_str()),
+                    globalTelemetry.currentPan,
+                    (int)globalTelemetry.currentEmotion,
+                    (unsigned int)(ESP.getFreePsram() / 1024));
+      Serial.flush();
+      xSemaphoreGive(telemetryMutex);
+    }
+  }
+  vTaskDelay(pdMS_TO_TICKS(100)); // Yield to Idle task and feed FreeRTOS watchdog
 }
